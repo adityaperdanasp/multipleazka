@@ -58,6 +58,16 @@
       <!-- Choose create vs join -->
       <div id="pair-choose">
         <p class="subtitle">Start a new race or join your partner.</p>
+
+        <!-- Answer style: multiple choice vs type-in (per player) -->
+        <div class="answer-style">
+          <div class="seg-label">Answer style</div>
+          <div class="seg" id="answer-seg">
+            <button class="seg-btn active" data-mode="choice">🔘 Multiple choice</button>
+            <button class="seg-btn" data-mode="type">⌨️ Type it in</button>
+          </div>
+        </div>
+
         <button id="btn-create" class="primary-btn">Create Game</button>
         <div class="or">— or —</div>
         <div class="join-row">
@@ -93,7 +103,6 @@
         <span class="lane-score"><span id="kids-correct">0</span> correct</span>
       </div>
       <div class="track">
-        <div class="start-label">START</div>
         <div class="finish-flag">🏁</div>
         <div class="car" id="car-kids">🏎️</div>
       </div>
@@ -106,7 +115,6 @@
         <span class="lane-score"><span id="parent-correct">0</span> correct</span>
       </div>
       <div class="track">
-        <div class="start-label">START</div>
         <div class="finish-flag">🏁</div>
         <div class="car" id="car-parent">🚙</div>
       </div>

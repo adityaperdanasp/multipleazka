@@ -90,14 +90,19 @@ const CHEERS_WRONG = [
 
 // Runtime state for THIS device.
 const state = {
-  role: null,       // 'kids' | 'parent' — the role this device plays
-  code: null,       // pairing code for the game
-  correct: 0,       // correct answers by this player
-  progress: 0,      // 0..1 track position for this player
-  currentAnswer: 0, // correct value for the on-screen question
+  role: null,         // 'kids' | 'parent' — the role this device plays
+  code: null,         // pairing code for the game
+  correct: 0,         // correct answers by this player
+  progress: 0,        // 0..1 track position for this player
+  currentAnswer: 0,   // correct value for the on-screen question
+  answerMode: "choice", // 'choice' (multiple choice) | 'type' (keypad)
+  answerLocked: false,  // guards against double-submits between questions
   gameOver: false,
-  listening: false  // whether a Firebase listener is attached
+  listening: false    // whether a Firebase listener is attached
 };
+
+// The digits typed so far in "type-it-in" mode.
+let typedValue = "";
 
 
 /* =================================================================
@@ -119,7 +124,7 @@ document.querySelectorAll(".role-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     state.role = btn.dataset.role;                 // 'kids' or 'parent'
     $("pair-role-label").textContent =
-      state.role === "kids" ? "Kids 🧒" : "Parent 🧑";
+      state.role === "kids" ? "Kids 👦" : "Parent 🧑";
     resetPairUI();
     showScreen("screen-pair");
   });
@@ -128,6 +133,15 @@ document.querySelectorAll(".role-btn").forEach(btn => {
 // Back buttons
 document.querySelectorAll(".back-btn").forEach(btn => {
   btn.addEventListener("click", () => showScreen(btn.dataset.back));
+});
+
+// Answer-style segmented control (multiple choice vs type-in). Per player.
+document.querySelectorAll(".seg-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    state.answerMode = btn.dataset.mode;           // 'choice' or 'type'
+    document.querySelectorAll(".seg-btn")
+      .forEach(b => b.classList.toggle("active", b === btn));
+  });
 });
 
 
@@ -295,6 +309,7 @@ function spawnSmoke(track, leftPx) {
    ================================================================= */
 function startRace() {
   showScreen("screen-race");
+  state.answerLocked = false;
 
   // Parent role gets neutral feedback; Kids get cheering. Hide/adjust label.
   $("your-turn-label").textContent =
@@ -303,47 +318,102 @@ function startRace() {
   nextQuestion();
 }
 
-// Generate and render a new multiple-choice question for this player's role.
+// Generate a new question, then render the answer UI for the chosen mode.
 function nextQuestion() {
   if (state.gameOver) return;
+  state.answerLocked = false;
 
   const max = RANGE[state.role];
   const a = rand(1, max);
   const b = rand(1, max);
-  const answer = a * b;
-  state.currentAnswer = answer;
+  state.currentAnswer = a * b;
 
   $("question-text").textContent = `${a} × ${b} = ?`;
 
-  // Build 4 options: the correct answer + 3 unique distractors.
+  if (state.answerMode === "type") renderKeypad();
+  else renderChoices();
+}
+
+// --- Multiple choice: 4 tappable options (correct + 3 distractors) ----------
+function renderChoices() {
+  const answer = state.currentAnswer;
   const options = new Set([answer]);
   while (options.size < 4) {
-    // Distractors near the real answer so choices feel plausible.
     const delta = rand(1, Math.max(3, Math.round(answer * 0.3)));
     const candidate = Math.random() < 0.5 ? answer + delta : answer - delta;
     if (candidate > 0 && candidate !== answer) options.add(candidate);
   }
 
-  const shuffled = shuffle([...options]);
-  const wrap = $("answer-options");
-  wrap.innerHTML = "";
-  shuffled.forEach(val => {
+  const grid = document.createElement("div");
+  grid.className = "choices-grid";
+  shuffle([...options]).forEach(val => {
     const btn = document.createElement("button");
     btn.className = "answer-btn";
     btn.textContent = val;
-    btn.addEventListener("click", () => handleAnswer(val, btn));
-    wrap.appendChild(btn);
+    btn.addEventListener("click", () => handleAnswer(val));
+    grid.appendChild(btn);
   });
+
+  const wrap = $("answer-options");
+  wrap.innerHTML = "";
+  wrap.appendChild(grid);
 }
 
-// Handle a tapped answer.
-function handleAnswer(value, btn) {
-  if (state.gameOver) return;
+// --- Type it in: calculator display + keypad --------------------------------
+function renderKeypad() {
+  typedValue = "";
+  const wrap = $("answer-options");
+  wrap.innerHTML =
+    '<div class="keypad-display" id="keypad-display"></div>' +
+    '<div class="keypad" id="keypad"></div>';
 
-  const isCorrect = value === state.currentAnswer;
+  const keys = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "back", "0", "enter"];
+  const pad = $("keypad");
+  keys.forEach(k => {
+    const btn = document.createElement("button");
+    if (k === "back") { btn.className = "key back"; btn.textContent = "⌫"; btn.setAttribute("aria-label", "Delete"); }
+    else if (k === "enter") { btn.className = "key ent"; btn.textContent = "✓"; btn.setAttribute("aria-label", "Submit"); }
+    else { btn.className = "key"; btn.textContent = k; }
+    btn.addEventListener("click", () => typeKey(k));
+    pad.appendChild(btn);
+  });
+  updateKeypadDisplay();
+}
 
-  // Briefly lock buttons to prevent double taps.
-  document.querySelectorAll(".answer-btn").forEach(b => (b.disabled = true));
+// Handle a keypad tap OR a physical keyboard key in type-in mode.
+function typeKey(k) {
+  if (state.gameOver || state.answerLocked) return;
+  if (k === "back") { typedValue = typedValue.slice(0, -1); updateKeypadDisplay(); return; }
+  if (k === "enter") { if (typedValue !== "") handleAnswer(Number(typedValue)); return; }
+  if (typedValue.length < 4) { typedValue += k; updateKeypadDisplay(); }
+}
+
+// Redraw the number typed so far (with a blinking cursor).
+function updateKeypadDisplay() {
+  const d = $("keypad-display");
+  if (!d) return;
+  const shown = typedValue === "" ? '<span class="kd-placeholder">?</span>' : typedValue;
+  d.innerHTML = shown + '<span class="kd-cursor"></span>';
+}
+
+// Physical keyboard support (laptops) — only during a race in type-in mode.
+document.addEventListener("keydown", e => {
+  if (state.answerMode !== "type") return;
+  if (!$("screen-race").classList.contains("active")) return;
+  if (e.key >= "0" && e.key <= "9") typeKey(e.key);
+  else if (e.key === "Backspace") { e.preventDefault(); typeKey("back"); }
+  else if (e.key === "Enter") typeKey("enter");
+});
+
+// --- Shared answer handling for BOTH modes ----------------------------------
+function handleAnswer(value) {
+  if (state.gameOver || state.answerLocked) return;
+  state.answerLocked = true;
+
+  const isCorrect = Number(value) === state.currentAnswer;
+
+  // Lock every input to prevent double-submits between questions.
+  document.querySelectorAll(".answer-btn, .key").forEach(b => (b.disabled = true));
 
   if (isCorrect) {
     state.correct += 1;
@@ -351,17 +421,22 @@ function handleAnswer(value, btn) {
     pushProgress();
     giveFeedback(true);
 
-    // Check for a win.
-    if (state.progress >= 1) {
-      claimWin();
-      return;
-    }
+    if (state.progress >= 1) { claimWin(); return; }
+    setTimeout(nextQuestion, 850);   // answerLocked is reset inside nextQuestion
   } else {
     giveFeedback(false);
+    if (state.answerMode === "type") {
+      // Type-in: keep the SAME question so the player can try again.
+      setTimeout(() => {
+        state.answerLocked = false;
+        typedValue = "";
+        document.querySelectorAll(".key").forEach(b => (b.disabled = false));
+        updateKeypadDisplay();
+      }, 1000);
+    } else {
+      setTimeout(nextQuestion, 1000); // multiple choice: fresh question
+    }
   }
-
-  // Load next question shortly after feedback shows.
-  setTimeout(nextQuestion, isCorrect ? 850 : 1000);
 }
 
 // Random int in [min, max].

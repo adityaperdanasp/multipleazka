@@ -286,22 +286,6 @@ h1, h2 { margin: 0 0 8px; }
   border: 2px dashed var(--track-border);
   overflow: hidden;
 }
-/* "START" label at the left edge of every track — small enough to sit
-   fully INSIDE the dashed box without being clipped. */
-.start-label {
-  position: absolute;
-  left: 7px; top: 50%;
-  transform: translateY(-50%);
-  font-size: .42rem;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: 0;
-  color: var(--start-color);
-  writing-mode: vertical-rl;
-  text-orientation: upright;
-  opacity: .8;
-  pointer-events: none;
-}
 .finish-flag {
   position: absolute;
   right: 6px; top: 50%;
@@ -363,26 +347,110 @@ h1, h2 { margin: 0 0 8px; }
   margin-bottom: 22px;
 }
 .answer-options {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* --- Multiple-choice: clean light keys (same palette as the keypad) --- */
+.choices-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  width: 100%;
-  max-width: 420px;
 }
 .answer-btn {
   padding: 20px;
   font-size: 1.6rem;
   font-weight: 700;
-  color: #fff;
-  background: var(--brand);
-  border: none;
+  color: #16233a;
+  background: #f1f5fa;
+  border: 1px solid #e3ebf6;
   border-radius: 14px;
   cursor: pointer;
   transition: transform .1s ease, background .15s ease;
 }
-.answer-btn:hover { background: var(--brand-dark); }
+.answer-btn:hover { background: #e7eef7; }
 .answer-btn:active { transform: scale(.96); }
 .answer-btn:disabled { opacity: .6; cursor: default; }
+
+/* --- Type-it-in: calculator display + keypad --- */
+.keypad-display {
+  background: #f4f7fb;
+  border: 2px solid #e3ebf6;
+  border-radius: 14px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 18px;
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: #16233a;
+  margin-bottom: 12px;
+}
+.kd-placeholder { color: #c2cdda; }
+.kd-cursor {
+  display: inline-block;
+  width: 3px; height: 1.9rem;
+  background: var(--brand);
+  margin-left: 4px;
+  border-radius: 2px;
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.key {
+  padding: 18px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #16233a;
+  background: #f1f5fa;
+  border: 1px solid #e3ebf6;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform .1s ease, background .15s ease;
+}
+.key:hover { background: #e7eef7; }
+.key:active { transform: scale(.95); }
+.key:disabled { opacity: .6; cursor: default; }
+.key.back { background: #fff1e8; border-color: #ffe0cc; color: #d2691e; }
+.key.back:hover { background: #ffe8d8; }
+.key.ent  { background: var(--good); border-color: var(--good); color: #fff; }
+.key.ent:hover { background: #1c8b5c; }
+
+/* --- Answer-style segmented control (setup screen) --- */
+.answer-style { margin-bottom: 18px; }
+.seg-label {
+  font-size: .7rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  background: #eef2f8;
+  padding: 4px;
+  border-radius: 12px;
+}
+.seg-btn {
+  padding: 10px 6px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: #66738a;
+  font-size: .9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .12s ease, color .12s ease;
+}
+.seg-btn.active { background: var(--brand); color: #fff; }
 
 /* Feedback popup */
 .feedback-popup {
