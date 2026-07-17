@@ -28,13 +28,13 @@
      5. Make sure databaseURL is present (Realtime DB, not Firestore).
    ================================================================= */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDaWWg1-R9cRVU44coT5qMhzstAK4o8WTw",
+  authDomain: "multipleazka.firebaseapp.com",
+  databaseURL: "https://multipleazka-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "multipleazka",
+  storageBucket: "multipleazka.firebasestorage.app",
+  messagingSenderId: "597375324235",
+  appId: "1:597375324235:web:384f8d3b43e582b281fdce"
 };
 
 firebase.initializeApp(firebaseConfig);
