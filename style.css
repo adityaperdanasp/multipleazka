@@ -19,7 +19,45 @@
   --muted: #6b7a90;
   --radius: 18px;
   --shadow: 0 12px 30px rgba(9, 22, 45, 0.18);
+
+  /* Themeable lane/track colors — PASTEL is the default look */
+  --lane-kids-bg:    linear-gradient(180deg, #fff3ea 0%, #ffe6d3 100%);
+  --lane-parent-bg:  linear-gradient(180deg, #e8f1fd 0%, #d5e6fb 100%);
+  --kids-name:       #d2691e;
+  --parent-name:     var(--brand);
+  --track-bg:        rgba(255, 255, 255, 0.55);
+  --track-border:    rgba(0, 0, 0, 0.14);
+  --start-color:     #9aa7b8;
 }
+
+/* COLORFUL theme — brighter, more saturated lanes */
+body[data-theme="colorful"] {
+  --lane-kids-bg:    linear-gradient(180deg, #ffd93b 0%, #ff7b3d 100%);
+  --lane-parent-bg:  linear-gradient(180deg, #5ec6ff 0%, #7b6cff 100%);
+  --kids-name:       #b5470a;
+  --parent-name:     #3a2fb0;
+  --track-bg:        rgba(255, 255, 255, 0.35);
+  --track-border:    rgba(255, 255, 255, 0.7);
+  --start-color:     #ffffff;
+}
+
+/* ---------- Theme toggle button (floating, all screens) ---------- */
+.theme-toggle {
+  position: fixed;
+  top: 12px; right: 12px;
+  z-index: 50;
+  padding: 8px 14px;
+  font-size: .85rem;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(18, 102, 216, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.theme-toggle:active { transform: scale(.95); }
 
 /* ---------- Base ---------- */
 * { box-sizing: border-box; }
@@ -213,8 +251,8 @@ h1, h2 { margin: 0 0 8px; }
   width: 100%;
   padding: 12px 16px 8px;
 }
-.lane-kids   { background: linear-gradient(180deg, #fff3ea 0%, #ffe6d3 100%); }
-.lane-parent { background: linear-gradient(180deg, #e8f1fd 0%, #d5e6fb 100%); }
+.lane-kids   { background: var(--lane-kids-bg); }
+.lane-parent { background: var(--lane-parent-bg); }
 
 .lane-header {
   display: flex;
@@ -223,19 +261,32 @@ h1, h2 { margin: 0 0 8px; }
   font-weight: 700;
   margin-bottom: 6px;
 }
-.lane-kids .lane-name   { color: #d2691e; }
-.lane-parent .lane-name { color: var(--brand); }
+.lane-kids .lane-name   { color: var(--kids-name); }
+.lane-parent .lane-name { color: var(--parent-name); }
 .lane-score { font-size: .9rem; color: var(--muted); }
 
-/* Track with finish line + moving car */
+/* Track with finish line + moving car (no grid lines — clean lane) */
 .track {
   position: relative;
   height: 60px;
-  background: repeating-linear-gradient(
-    90deg, rgba(0,0,0,.06) 0 2px, transparent 2px 40px
-  );
+  background: var(--track-bg);
   border-radius: 12px;
-  border: 2px dashed rgba(0,0,0,.12);
+  border: 2px dashed var(--track-border);
+  overflow: hidden;
+}
+/* "START" label at the left edge of every track */
+.start-label {
+  position: absolute;
+  left: 8px; top: 50%;
+  transform: translateY(-50%);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--start-color);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  opacity: .8;
+  pointer-events: none;
 }
 .finish-flag {
   position: absolute;
@@ -245,11 +296,29 @@ h1, h2 { margin: 0 0 8px; }
 }
 .car {
   position: absolute;
-  left: 0; top: 50%;
-  transform: translateY(-50%);
+  left: 24px; top: 50%;
+  /* scaleX(-1) flips the emoji to FACE the finish line (drives right) */
+  transform: translateY(-50%) scaleX(-1);
   font-size: 2rem;
   transition: left 0.5s cubic-bezier(.34,1.2,.64,1);
   will-change: left;
+  z-index: 2;
+}
+
+/* Little smoke puff behind the car when it moves */
+.smoke {
+  position: absolute;
+  top: 50%;
+  font-size: 1.2rem;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: .85;
+  z-index: 1;
+  animation: puff 0.9s ease-out forwards;
+}
+@keyframes puff {
+  0%   { opacity: .85; transform: translateY(-50%) translateX(0) scale(.6); }
+  100% { opacity: 0;   transform: translateY(-90%) translateX(-26px) scale(1.5); }
 }
 
 /* Question panel */

@@ -255,15 +255,38 @@ function attachGameListener(code) {
   });
 }
 
+// Remember each car's last progress so we can detect forward movement (for smoke).
+const lastProgress = { kids: 0, parent: 0 };
+
 // Move a car on its track based on that player's progress (0..1).
 function updateCar(role, player) {
   if (!player) return;
   const car = $("car-" + role);
   const track = car.parentElement;
-  const maxLeft = track.clientWidth - car.offsetWidth - 8; // leave room for flag
   const p = Math.min(player.progress || 0, 1);
-  car.style.left = Math.max(0, maxLeft * p) + "px";
+
+  // Car travels from just past the START label to just before the finish flag.
+  const startX = 28;
+  const endX = Math.max(startX, track.clientWidth - car.offsetWidth - 40);
+  const leftPx = startX + (endX - startX) * p;
+  car.style.left = leftPx + "px";
   $(role + "-correct").textContent = player.correct || 0;
+
+  // Smoke puff for the KIDS car whenever it moves forward. 💨
+  if (role === "kids" && p > lastProgress.kids) {
+    spawnSmoke(track, leftPx);
+  }
+  lastProgress[role] = p;
+}
+
+// Drop a quick smoke puff behind a car at the given left position.
+function spawnSmoke(track, leftPx) {
+  const puff = document.createElement("div");
+  puff.className = "smoke";
+  puff.textContent = "💨";
+  puff.style.left = Math.max(0, leftPx - 6) + "px";
+  track.appendChild(puff);
+  setTimeout(() => puff.remove(), 900);
 }
 
 
@@ -409,14 +432,47 @@ function showPopup(popup, text, type) {
   showPopup._t = setTimeout(() => popup.classList.add("hidden"), 1600);
 }
 
+// --- Warm, friendly FEMALE voice selection ---------------------------------
+// Voices load asynchronously in most browsers, so we cache the best match and
+// refresh it when the list becomes available.
+let preferredVoice = null;
+
+function loadPreferredVoice() {
+  if (!("speechSynthesis" in window)) return;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return;
+
+  // Warm female English voices, in order of preference across platforms.
+  const wishlist = [
+    "Samantha", "Google UK English Female", "Microsoft Aria",
+    "Microsoft Jenny", "Karen", "Victoria", "Moira", "Tessa",
+    "Fiona", "Microsoft Zira", "Google US English"
+  ];
+  for (const name of wishlist) {
+    const v = voices.find(v => v.name === name || v.name.includes(name));
+    if (v) { preferredVoice = v; return; }
+  }
+  // Fallbacks: anything that looks female + English, else any English voice.
+  preferredVoice =
+    voices.find(v => /female|woman/i.test(v.name) && /^en/i.test(v.lang)) ||
+    voices.find(v => /^en/i.test(v.lang)) ||
+    voices[0] || null;
+}
+
+if ("speechSynthesis" in window) {
+  loadPreferredVoice();
+  window.speechSynthesis.onvoiceschanged = loadPreferredVoice;
+}
+
 // Browser Text-to-Speech (English). Kids only.
 function speak(text) {
   if (!("speechSynthesis" in window)) return;
   window.speechSynthesis.cancel(); // stop any queued speech
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
-  u.rate = 1.02;
-  u.pitch = 1.15; // slightly higher, friendlier for a child
+  u.rate = 0.95;  // a touch slower = warmer, friendlier
+  u.pitch = 1.35; // higher pitch, cheerful and kind
+  if (preferredVoice) u.voice = preferredVoice;
   window.speechSynthesis.speak(u);
 }
 
@@ -468,4 +524,24 @@ $("btn-play-again").addEventListener("click", async () => {
   state.progress = 0;
   state.gameOver = false;
   startRace();
+});
+
+
+/* =================================================================
+   11. COLOR THEME TOGGLE — Pastel ⇄ Colorful
+   ================================================================= */
+const themeToggle = $("theme-toggle");
+
+function applyTheme(theme) {
+  document.body.setAttribute("data-theme", theme);
+  themeToggle.textContent = theme === "colorful" ? "🎨 Colorful" : "🎨 Pastel";
+  try { localStorage.setItem("mpz-theme", theme); } catch (e) {}
+}
+
+// Restore the saved choice (default: pastel).
+applyTheme((() => { try { return localStorage.getItem("mpz-theme"); } catch (e) { return null; } })() || "pastel");
+
+themeToggle.addEventListener("click", () => {
+  const next = document.body.getAttribute("data-theme") === "colorful" ? "pastel" : "colorful";
+  applyTheme(next);
 });
