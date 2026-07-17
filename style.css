@@ -20,7 +20,10 @@
   --radius: 18px;
   --shadow: 0 12px 30px rgba(9, 22, 45, 0.18);
 
-  /* Themeable lane/track colors — PASTEL is the default look */
+  /* Themeable colors — PASTEL is the default look.
+     The whole page (all screens) follows the theme via --page-bg.
+     The question panel + answers stay WHITE & clean in BOTH themes. */
+  --page-bg:         linear-gradient(180deg, #eef5fd 0%, #dce9f8 100%);
   --lane-kids-bg:    linear-gradient(180deg, #fff3ea 0%, #ffe6d3 100%);
   --lane-parent-bg:  linear-gradient(180deg, #e8f1fd 0%, #d5e6fb 100%);
   --kids-name:       #d2691e;
@@ -28,36 +31,44 @@
   --track-bg:        rgba(255, 255, 255, 0.55);
   --track-border:    rgba(0, 0, 0, 0.14);
   --start-color:     #9aa7b8;
+
+  /* Always-clean gameplay Q&A zone (does NOT change with theme) */
+  --qpanel-bg:       #ffffff;
+  --qpanel-label:    #8a93a5;
+  --q-text:          #16233a;
 }
 
-/* COLORFUL theme — brighter, more saturated lanes */
+/* COLORFUL theme — matched to DinoRace (dinorace.lol):
+   sky→green page, green Kids lane, blue Parent lane, cream accents. */
 body[data-theme="colorful"] {
-  --lane-kids-bg:    linear-gradient(180deg, #ffd93b 0%, #ff7b3d 100%);
-  --lane-parent-bg:  linear-gradient(180deg, #5ec6ff 0%, #7b6cff 100%);
-  --kids-name:       #b5470a;
-  --parent-name:     #3a2fb0;
-  --track-bg:        rgba(255, 255, 255, 0.35);
-  --track-border:    rgba(255, 255, 255, 0.7);
+  --page-bg:         linear-gradient(180deg, #4fbde9 0%, #8fd14f 100%);
+  --lane-kids-bg:    linear-gradient(180deg, #a6d95f 0%, #7cb23c 100%);
+  --lane-parent-bg:  linear-gradient(180deg, #5bb8e6 0%, #3b8ec2 100%);
+  --kids-name:       #27500a;
+  --parent-name:     #042c53;
+  --track-bg:        rgba(255, 255, 255, 0.32);
+  --track-border:    rgba(255, 255, 255, 0.75);
   --start-color:     #ffffff;
 }
 
-/* ---------- Theme toggle button (floating, all screens) ---------- */
+/* ---------- Theme toggle — small, icon-only, bottom-right ---------- */
 .theme-toggle {
   position: fixed;
-  top: 12px; right: 12px;
+  bottom: 14px; right: 14px;
   z-index: 50;
-  padding: 8px 14px;
-  font-size: .85rem;
-  font-weight: 700;
-  color: #fff;
-  background: rgba(18, 102, 216, 0.85);
-  border: 1.5px solid rgba(255, 255, 255, 0.35);
-  border-radius: 999px;
+  width: 34px; height: 34px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(0, 0, 0, 0.14);
+  border-radius: 50%;
   cursor: pointer;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
 }
-.theme-toggle:active { transform: scale(.95); }
+.theme-toggle:active { transform: scale(.9); }
 
 /* ---------- Base ---------- */
 * { box-sizing: border-box; }
@@ -70,7 +81,8 @@ html, body {
 body {
   font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   color: var(--text);
-  background: radial-gradient(1200px 800px at 50% -10%, #1c3a63 0%, var(--bg) 60%);
+  background: var(--page-bg);   /* follows the theme on every screen */
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -274,14 +286,16 @@ h1, h2 { margin: 0 0 8px; }
   border: 2px dashed var(--track-border);
   overflow: hidden;
 }
-/* "START" label at the left edge of every track */
+/* "START" label at the left edge of every track — small enough to sit
+   fully INSIDE the dashed box without being clipped. */
 .start-label {
   position: absolute;
-  left: 8px; top: 50%;
+  left: 7px; top: 50%;
   transform: translateY(-50%);
-  font-size: .72rem;
+  font-size: .42rem;
+  line-height: 1;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0;
   color: var(--start-color);
   writing-mode: vertical-rl;
   text-orientation: upright;
@@ -321,13 +335,14 @@ h1, h2 { margin: 0 0 8px; }
   100% { opacity: 0;   transform: translateY(-90%) translateX(-26px) scale(1.5); }
 }
 
-/* Question panel */
+/* Question panel — ALWAYS clean white (unchanged by the theme).
+   Extra bottom padding keeps the bottom-right toggle off the answer buttons. */
 .question-panel {
   flex: 1;
   width: 100%;
-  background: var(--bg);
-  color: #fff;
-  padding: 20px 18px 30px;
+  background: var(--qpanel-bg);
+  color: var(--q-text);
+  padding: 20px 18px 58px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -339,7 +354,7 @@ h1, h2 { margin: 0 0 8px; }
   text-transform: uppercase;
   letter-spacing: 2px;
   font-size: .8rem;
-  color: #9db4d6;
+  color: var(--qpanel-label);
   margin-bottom: 8px;
 }
 .question-text {

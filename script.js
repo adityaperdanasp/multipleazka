@@ -534,7 +534,10 @@ const themeToggle = $("theme-toggle");
 
 function applyTheme(theme) {
   document.body.setAttribute("data-theme", theme);
-  themeToggle.textContent = theme === "colorful" ? "🎨 Colorful" : "🎨 Pastel";
+  // Icon-only button; theme name lives in the tooltip for clarity.
+  themeToggle.textContent = "🎨";
+  themeToggle.title = theme === "colorful" ? "Colorful theme (tap for Pastel)"
+                                            : "Pastel theme (tap for Colorful)";
   try { localStorage.setItem("mpz-theme", theme); } catch (e) {}
 }
 

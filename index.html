@@ -11,6 +11,14 @@
 <title>Multipleazka 🏎️ — Multiplication Race</title>
 <link rel="stylesheet" href="style.css" />
 
+<!-- App icon for Safari "Add to Home Screen" (racing-car thumbnail) -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="icon-512.png" />
+<link rel="manifest" href="manifest.json" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Multipleazka" />
+
 <!-- Floating color-theme toggle (Pastel ⇄ Colorful) — visible on all screens -->
 <button id="theme-toggle" class="theme-toggle">🎨 Pastel</button>
 
@@ -26,7 +34,7 @@
 
       <div class="role-buttons">
         <button class="role-btn" data-role="kids">
-          <span class="role-emoji">🧒</span>
+          <span class="role-emoji">👦</span>
           <span class="role-title">Kids</span>
           <span class="role-desc">Numbers 1–10 · 10 to win</span>
         </button>
@@ -81,7 +89,7 @@
     <!-- Top lane: KIDS -->
     <div class="lane lane-kids">
       <div class="lane-header">
-        <span class="lane-name">🧒 Kids</span>
+        <span class="lane-name">👦 Kids</span>
         <span class="lane-score"><span id="kids-correct">0</span> correct</span>
       </div>
       <div class="track">
