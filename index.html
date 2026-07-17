@@ -43,12 +43,10 @@
         <button class="role-btn" data-role="kids">
           <span class="role-emoji">👦</span>
           <span class="role-title">Kids</span>
-          <span class="role-desc">Numbers 1–10 · 10 to win</span>
         </button>
         <button class="role-btn" data-role="parent">
           <span class="role-emoji">🧑</span>
           <span class="role-title">Parent</span>
-          <span class="role-desc">Numbers 1–12 · harder track</span>
         </button>
       </div>
     </div>
@@ -99,6 +97,13 @@
         <p class="subtitle">Share this code with the other player:</p>
         <div id="code-display" class="code-display">------</div>
         <button id="btn-copy-code" class="ghost-btn">Copy code</button>
+
+        <!-- Scan-to-join QR code (encodes a link with the code baked in) -->
+        <div class="qr-wrap">
+          <div class="qr-label">or scan to join</div>
+          <div id="qr-code" class="qr-box"></div>
+        </div>
+
         <p class="waiting-status">
           <span class="spinner"></span>
           <span id="waiting-text">Waiting for the other player to join…</span>
@@ -177,6 +182,9 @@
 <!-- ============================================================= -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<!-- QR code generator (renders a scannable join link on the waiting screen) -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
 <!-- Game logic -->
 <script src="script.js"></script>

@@ -114,6 +114,9 @@ let timerId = null;
 let timerRemaining = 0;
 let raceStartTime = 0;
 
+// A pairing code carried in the URL (?join=CODE) from a scanned QR code.
+const pendingJoinCode = new URLSearchParams(location.search).get("join")?.toUpperCase() || null;
+
 
 /* =================================================================
    3. SCREEN NAVIGATION HELPERS
@@ -136,6 +139,12 @@ document.querySelectorAll(".role-btn").forEach(btn => {
     $("pair-role-label").textContent =
       state.role === "kids" ? "Kids 👦" : "Parent 🧑";
     resetPairUI();
+
+    // Arrived here via a scanned QR join link — prefill the code for them.
+    if (pendingJoinCode) {
+      $("join-code-input").value = pendingJoinCode;
+    }
+
     showScreen("screen-pair");
   });
 });
@@ -202,9 +211,26 @@ $("btn-create").addEventListener("click", async () => {
   $("code-display").textContent = code;
   $("pair-choose").classList.add("hidden");
   $("pair-waiting").classList.remove("hidden");
+  renderJoinQR(code);
 
   attachGameListener(code);
 });
+
+// Render a scannable QR code that deep-links straight to this game's code.
+function renderJoinQR(code) {
+  const box = $("qr-code");
+  box.innerHTML = ""; // clear any QR from a previous game
+  if (typeof QRCode === "undefined") return; // library failed to load — code still works manually
+  const joinUrl = `${location.origin}${location.pathname}?join=${code}`;
+  new QRCode(box, {
+    text: joinUrl,
+    width: 150,
+    height: 150,
+    colorDark: "#16233a",
+    colorLight: "#ffffff",
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
 
 // --- JOIN a game ---
 $("btn-join").addEventListener("click", async () => {
