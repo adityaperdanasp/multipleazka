@@ -49,11 +49,15 @@ const db = firebase.database();
 const CHILD_NAME = "Azka";
 
 // How far each correct answer moves the car (fraction of the track, 0..1).
-// Kids: 10 correct → finish.   Parent: 50 correct → finish (1/5 of Kids' step).
+// Parent's car moves at 0.25× the Kids' car speed.
+// Kids: 10 correct → finish.   Parent: 40 correct → finish.
 const STEP = {
-  kids: 1 / 10,   // 0.10
-  parent: 1 / 50  // 0.02
+  kids: 1 / 10,   // 0.100
+  parent: 1 / 40  // 0.025  (0.25× of Kids' step)
 };
+
+// Seconds allowed per question when the Timer is On.
+const QUESTION_TIME = 10;
 
 // Number ranges for question factors.
 const RANGE = {
@@ -97,12 +101,18 @@ const state = {
   currentAnswer: 0,   // correct value for the on-screen question
   answerMode: "choice", // 'choice' (multiple choice) | 'type' (keypad)
   answerLocked: false,  // guards against double-submits between questions
+  timerOn: true,        // per-question 10s countdown on/off
   gameOver: false,
   listening: false    // whether a Firebase listener is attached
 };
 
 // The digits typed so far in "type-it-in" mode.
 let typedValue = "";
+
+// Per-question timer + total race time (for scoreboard best time).
+let timerId = null;
+let timerRemaining = 0;
+let raceStartTime = 0;
 
 
 /* =================================================================
@@ -136,10 +146,19 @@ document.querySelectorAll(".back-btn").forEach(btn => {
 });
 
 // Answer-style segmented control (multiple choice vs type-in). Per player.
-document.querySelectorAll(".seg-btn").forEach(btn => {
+document.querySelectorAll("#answer-seg .seg-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     state.answerMode = btn.dataset.mode;           // 'choice' or 'type'
-    document.querySelectorAll(".seg-btn")
+    document.querySelectorAll("#answer-seg .seg-btn")
+      .forEach(b => b.classList.toggle("active", b === btn));
+  });
+});
+
+// Timer on/off segmented control. Per player.
+document.querySelectorAll("#timer-seg .seg-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    state.timerOn = btn.dataset.timer === "on";
+    document.querySelectorAll("#timer-seg .seg-btn")
       .forEach(b => b.classList.toggle("active", b === btn));
   });
 });
@@ -310,6 +329,7 @@ function spawnSmoke(track, leftPx) {
 function startRace() {
   showScreen("screen-race");
   state.answerLocked = false;
+  raceStartTime = Date.now();   // for the scoreboard "best time"
 
   // Parent role gets neutral feedback; Kids get cheering. Hide/adjust label.
   $("your-turn-label").textContent =
@@ -332,6 +352,42 @@ function nextQuestion() {
 
   if (state.answerMode === "type") renderKeypad();
   else renderChoices();
+
+  startQuestionTimer();   // (no-op if Timer is Off)
+}
+
+/* --- Per-question countdown (10s; timeout counts as WRONG) ----------------- */
+function startQuestionTimer() {
+  clearQuestionTimer();
+  const wrap = $("timer-wrap");
+  if (!state.timerOn) { wrap.classList.add("hidden"); return; }
+
+  wrap.classList.remove("hidden");
+  timerRemaining = QUESTION_TIME;
+  updateTimerUI();
+  timerId = setInterval(() => {
+    timerRemaining -= 0.1;
+    if (timerRemaining <= 0) {
+      clearQuestionTimer();
+      // Time's up → treat as a wrong answer.
+      handleAnswer(null);
+    } else {
+      updateTimerUI();
+    }
+  }, 100);
+}
+
+function updateTimerUI() {
+  const pct = Math.max(0, timerRemaining / QUESTION_TIME) * 100;
+  const fill = $("timer-fill");
+  const txt = $("timer-text");
+  const low = timerRemaining < 4;   // <4s → red/urgent
+  if (fill) { fill.style.width = pct + "%"; fill.classList.toggle("low", low); }
+  if (txt) { txt.textContent = Math.max(0, Math.ceil(timerRemaining)) + "s"; txt.classList.toggle("low", low); }
+}
+
+function clearQuestionTimer() {
+  if (timerId) { clearInterval(timerId); timerId = null; }
 }
 
 // --- Multiple choice: 4 tappable options (correct + 3 distractors) ----------
@@ -409,8 +465,10 @@ document.addEventListener("keydown", e => {
 function handleAnswer(value) {
   if (state.gameOver || state.answerLocked) return;
   state.answerLocked = true;
+  clearQuestionTimer();   // stop the countdown for this question
 
-  const isCorrect = Number(value) === state.currentAnswer;
+  // value === null means the timer ran out → always wrong.
+  const isCorrect = value !== null && Number(value) === state.currentAnswer;
 
   // Lock every input to prevent double-submits between questions.
   document.querySelectorAll(".answer-btn, .key").forEach(b => (b.disabled = true));
@@ -432,6 +490,7 @@ function handleAnswer(value) {
         typedValue = "";
         document.querySelectorAll(".key").forEach(b => (b.disabled = false));
         updateKeypadDisplay();
+        startQuestionTimer();   // fresh 10s for the retry
       }, 1000);
     } else {
       setTimeout(nextQuestion, 1000); // multiple choice: fresh question
@@ -557,6 +616,7 @@ function speak(text) {
    ================================================================= */
 function endGame(winnerRole) {
   state.gameOver = true;
+  clearQuestionTimer();
 
   const iWon = winnerRole === state.role;
   $("over-emoji").textContent = iWon ? "🏆" : "🎉";
@@ -578,6 +638,105 @@ function endGame(winnerRole) {
   }
 
   showScreen("screen-over");
+  updateScoreboardUI(winnerRole);   // record + render the family scoreboard
+}
+
+/* =================================================================
+   10b. FAMILY SCOREBOARD — persisted at Firebase /scoreboard
+   ================================================================= */
+async function updateScoreboardUI(winnerRole) {
+  const box = $("scoreboard");
+  box.innerHTML = '<div class="sb-empty">Loading scoreboard…</div>';
+
+  const iWon = winnerRole === state.role;
+  const elapsed = raceStartTime ? Math.round((Date.now() - raceStartTime) / 1000) : 0;
+
+  let sb = null;
+  try {
+    if (iWon) {
+      sb = await recordWin(winnerRole, elapsed);   // only the winner writes
+    } else {
+      await new Promise(r => setTimeout(r, 700));   // let the winner write first
+      const snap = await db.ref("scoreboard").get();
+      sb = snap.val();
+    }
+  } catch (e) {
+    box.innerHTML = '<div class="sb-title">🏆 Scoreboard</div>' +
+      '<div class="sb-empty">Add a Firebase rule for /scoreboard to enable this.</div>';
+    return;
+  }
+  renderScoreboard(sb);
+}
+
+// Read-modify-write the scoreboard (only the winner calls this).
+async function recordWin(winnerRole, timeSec) {
+  const ref = db.ref("scoreboard");
+  const snap = await ref.get();
+  const sb = snap.val() || {};
+
+  sb.wins = sb.wins || { kids: 0, parent: 0 };
+  sb.wins[winnerRole] = (sb.wins[winnerRole] || 0) + 1;
+
+  sb.bestTime = sb.bestTime || {};
+  if (timeSec > 0 && (!sb.bestTime[winnerRole] || timeSec < sb.bestTime[winnerRole])) {
+    sb.bestTime[winnerRole] = timeSec;
+  }
+
+  sb.streak = (sb.streak && sb.streak.role === winnerRole)
+    ? { role: winnerRole, count: (sb.streak.count || 0) + 1 }
+    : { role: winnerRole, count: 1 };
+
+  sb.totalRaces = (sb.totalRaces || 0) + 1;
+
+  const recent = Array.isArray(sb.recent) ? sb.recent
+               : (sb.recent ? Object.values(sb.recent) : []);
+  recent.push({ winner: winnerRole, time: timeSec, at: Date.now() });
+  sb.recent = recent.slice(-5);   // keep the last 5
+
+  await ref.set(sb);
+  return sb;
+}
+
+function fmtTime(sec) {
+  if (!sec || sec < 0) return "—";
+  return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+}
+function roleName(role) { return role === "kids" ? "Azka" : "Parent"; }
+function roleEmoji(role) { return role === "kids" ? "👦" : "🧑"; }
+
+function renderScoreboard(sb) {
+  const box = $("scoreboard");
+  if (!sb || !sb.wins) {
+    box.innerHTML = '<div class="sb-title">🏆 Scoreboard</div>' +
+      '<div class="sb-empty">First race recorded — play again to build the board!</div>';
+    return;
+  }
+  const w = sb.wins || {};
+  const bt = sb.bestTime || {};
+  const streak = sb.streak || {};
+  const recent = (Array.isArray(sb.recent) ? sb.recent : Object.values(sb.recent || {}))
+    .slice().reverse();
+
+  let html = '<div class="sb-title">🏆 Scoreboard</div>';
+  html += '<div class="sb-vs">' +
+    `<div class="p"><div class="em">👦</div><div class="big">${w.kids || 0}</div><div class="nm">Azka</div></div>` +
+    '<div class="dash">—</div>' +
+    `<div class="p"><div class="em">🧑</div><div class="big">${w.parent || 0}</div><div class="nm">Parent</div></div>` +
+    '</div>';
+  html += `<div class="sb-row"><span class="lab">⚡ Best time</span><span class="val">👦 ${fmtTime(bt.kids)} · 🧑 ${fmtTime(bt.parent)}</span></div>`;
+  if (streak.role) {
+    html += `<div class="sb-row"><span class="lab">🔥 Streak</span><span class="val">${roleEmoji(streak.role)} ${roleName(streak.role)} × ${streak.count}</span></div>`;
+  }
+  html += `<div class="sb-row"><span class="lab">🏁 Total races</span><span class="val">${sb.totalRaces || 0}</span></div>`;
+  if (recent.length) {
+    html += '<div class="sb-recent"><div class="rt">Recent races</div>';
+    recent.forEach(r => {
+      const color = r.winner === "kids" ? "#d2691e" : "#1266d8";
+      html += `<div class="sb-rr"><span class="win" style="color:${color}">${roleEmoji(r.winner)} ${roleName(r.winner)} won</span><span>${fmtTime(r.time)}</span></div>`;
+    });
+    html += '</div>';
+  }
+  box.innerHTML = html;
 }
 
 // Play again — reset this game's state in Firebase and locally.
@@ -598,6 +757,7 @@ $("btn-play-again").addEventListener("click", async () => {
   state.correct = 0;
   state.progress = 0;
   state.gameOver = false;
+  clearQuestionTimer();
   startRace();
 });
 

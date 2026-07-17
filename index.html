@@ -9,6 +9,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <meta name="theme-color" content="#1266d8" />
 <title>Multipleazka 🏎️ — Multiplication Race</title>
+
+<!-- Fredoka: rounded, playful font for a kids' game -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" />
+
 <link rel="stylesheet" href="style.css" />
 
 <!-- App icon for Safari "Add to Home Screen" (racing-car thumbnail) -->
@@ -68,6 +75,15 @@
           </div>
         </div>
 
+        <!-- Timer: 10s per question, timeout counts as wrong (per player) -->
+        <div class="answer-style">
+          <div class="seg-label">Timer</div>
+          <div class="seg" id="timer-seg">
+            <button class="seg-btn active" data-timer="on">⏱ On · 10s</button>
+            <button class="seg-btn" data-timer="off">🚫 Off</button>
+          </div>
+        </div>
+
         <button id="btn-create" class="primary-btn">Create Game</button>
         <div class="or">— or —</div>
         <div class="join-row">
@@ -124,7 +140,14 @@
     <div class="question-panel">
       <div id="your-turn-label" class="your-turn">Your question</div>
       <div id="question-text" class="question-text">3 × 4 = ?</div>
-      <div id="answer-options" class="answer-options"><!-- buttons injected by JS --></div>
+
+      <!-- Per-question countdown (shown only when Timer is On) -->
+      <div id="timer-wrap" class="timer-wrap hidden">
+        <div class="timer-bar"><div id="timer-fill" class="timer-fill"></div></div>
+        <span id="timer-text" class="timer-text">10s</span>
+      </div>
+
+      <div id="answer-options" class="answer-options"><!-- buttons/keypad injected by JS --></div>
 
       <!-- Feedback popup (cheer text for Kids, neutral for Parent) -->
       <div id="feedback-popup" class="feedback-popup hidden"></div>
@@ -139,6 +162,10 @@
       <div id="over-emoji" class="over-emoji">🏆</div>
       <h1 id="winner-text">Winner!</h1>
       <p id="over-sub" class="subtitle"></p>
+
+      <!-- Family scoreboard (filled from Firebase after each race) -->
+      <div id="scoreboard" class="scoreboard"></div>
+
       <button id="btn-play-again" class="primary-btn">Play Again</button>
     </div>
   </section>
