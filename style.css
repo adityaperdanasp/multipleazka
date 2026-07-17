@@ -1,0 +1,340 @@
+/* =================================================================
+   Multipleazka — style.css
+   All styling lives here. Mobile-first, responsive for phone + laptop.
+   Brand blue: #1266d8 (Adit's brand)
+   ================================================================= */
+
+/* ---------- Design tokens ---------- */
+:root {
+  --brand: #1266d8;
+  --brand-dark: #0d4ea8;
+  --brand-light: #e8f1fd;
+  --kids: #ff8a3d;         /* warm orange lane for Kids */
+  --parent: #1266d8;       /* brand blue lane for Parent */
+  --good: #22a06b;         /* green feedback */
+  --neutral: #2f7de1;      /* blue/neutral feedback (never red) */
+  --bg: #0f1b2d;
+  --card: #ffffff;
+  --text: #16233a;
+  --muted: #6b7a90;
+  --radius: 18px;
+  --shadow: 0 12px 30px rgba(9, 22, 45, 0.18);
+}
+
+/* ---------- Base ---------- */
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 50% -10%, #1c3a63 0%, var(--bg) 60%);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#app {
+  min-height: 100dvh;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
+/* ---------- Screen system ---------- */
+.screen {
+  display: none;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 20px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.screen.active { display: flex; }
+
+.hidden { display: none !important; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px 26px;
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+  position: relative;
+  animation: pop 0.35s ease;
+}
+
+@keyframes pop {
+  from { transform: translateY(12px) scale(0.98); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* ---------- Logo / headings ---------- */
+.logo {
+  font-size: 2.2rem;
+  margin: 0 0 4px;
+  color: var(--brand);
+  letter-spacing: -0.5px;
+}
+.logo-emoji { filter: drop-shadow(0 2px 4px rgba(0,0,0,.15)); }
+.subtitle { color: var(--muted); margin: 6px 0 22px; }
+.brand { color: var(--brand); font-weight: 700; }
+
+h1, h2 { margin: 0 0 8px; }
+
+/* ---------- Role selection ---------- */
+.role-buttons {
+  display: grid;
+  gap: 16px;
+}
+.role-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 22px;
+  border: 2px solid var(--brand-light);
+  border-radius: var(--radius);
+  background: #fff;
+  cursor: pointer;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.role-btn:hover, .role-btn:focus-visible {
+  border-color: var(--brand);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 22px rgba(18,102,216,.18);
+  outline: none;
+}
+.role-emoji { font-size: 2.6rem; }
+.role-title { font-size: 1.3rem; font-weight: 700; color: var(--text); }
+.role-desc  { font-size: .85rem; color: var(--muted); }
+
+/* ---------- Buttons ---------- */
+.primary-btn {
+  width: 100%;
+  padding: 15px 18px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--brand);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: background .15s ease, transform .1s ease;
+}
+.primary-btn:hover { background: var(--brand-dark); }
+.primary-btn:active { transform: scale(.98); }
+
+.ghost-btn {
+  margin-top: 10px;
+  padding: 10px 16px;
+  background: var(--brand-light);
+  color: var(--brand);
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.back-btn {
+  position: absolute;
+  top: 16px; left: 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: .95rem;
+  cursor: pointer;
+}
+
+/* ---------- Pairing ---------- */
+.or { color: var(--muted); margin: 16px 0; font-size: .9rem; }
+.join-row { display: flex; gap: 10px; }
+.join-row input {
+  flex: 1;
+  padding: 14px;
+  font-size: 1.1rem;
+  letter-spacing: 3px;
+  text-align: center;
+  text-transform: uppercase;
+  border: 2px solid var(--brand-light);
+  border-radius: 12px;
+  min-width: 0;
+}
+.join-row input:focus { border-color: var(--brand); outline: none; }
+.join-row .primary-btn { width: auto; padding: 14px 22px; }
+
+.error-text { color: #c0392b; font-size: .9rem; min-height: 1.1em; margin: 10px 0 0; }
+
+.code-display {
+  font-size: 2.6rem;
+  font-weight: 800;
+  letter-spacing: 8px;
+  color: var(--brand);
+  background: var(--brand-light);
+  border-radius: 14px;
+  padding: 18px;
+  margin: 8px 0;
+}
+
+.waiting-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  margin-top: 18px;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 3px solid var(--brand-light);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* =================================================================
+   RACE SCREEN
+   ================================================================= */
+#screen-race {
+  padding: 0;
+  justify-content: flex-start;
+  gap: 0;
+}
+
+.lane {
+  width: 100%;
+  padding: 12px 16px 8px;
+}
+.lane-kids   { background: linear-gradient(180deg, #fff3ea 0%, #ffe6d3 100%); }
+.lane-parent { background: linear-gradient(180deg, #e8f1fd 0%, #d5e6fb 100%); }
+
+.lane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.lane-kids .lane-name   { color: #d2691e; }
+.lane-parent .lane-name { color: var(--brand); }
+.lane-score { font-size: .9rem; color: var(--muted); }
+
+/* Track with finish line + moving car */
+.track {
+  position: relative;
+  height: 60px;
+  background: repeating-linear-gradient(
+    90deg, rgba(0,0,0,.06) 0 2px, transparent 2px 40px
+  );
+  border-radius: 12px;
+  border: 2px dashed rgba(0,0,0,.12);
+}
+.finish-flag {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.6rem;
+}
+.car {
+  position: absolute;
+  left: 0; top: 50%;
+  transform: translateY(-50%);
+  font-size: 2rem;
+  transition: left 0.5s cubic-bezier(.34,1.2,.64,1);
+  will-change: left;
+}
+
+/* Question panel */
+.question-panel {
+  flex: 1;
+  width: 100%;
+  background: var(--bg);
+  color: #fff;
+  padding: 20px 18px 30px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.your-turn {
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: .8rem;
+  color: #9db4d6;
+  margin-bottom: 8px;
+}
+.question-text {
+  font-size: 3rem;
+  font-weight: 800;
+  margin-bottom: 22px;
+}
+.answer-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 420px;
+}
+.answer-btn {
+  padding: 20px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--brand);
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform .1s ease, background .15s ease;
+}
+.answer-btn:hover { background: var(--brand-dark); }
+.answer-btn:active { transform: scale(.96); }
+.answer-btn:disabled { opacity: .6; cursor: default; }
+
+/* Feedback popup */
+.feedback-popup {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  padding: 14px 22px;
+  border-radius: 14px;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,.3);
+  animation: floatIn .3s ease;
+  max-width: 90%;
+}
+.feedback-popup.good    { background: var(--good); }
+.feedback-popup.neutral { background: var(--neutral); }
+@keyframes floatIn {
+  from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* ---------- Game over ---------- */
+.over-emoji { font-size: 4rem; margin-bottom: 6px; animation: bounce 1s infinite alternate; }
+@keyframes bounce { to { transform: translateY(-10px); } }
+#winner-text { color: var(--brand); font-size: 2rem; }
+
+/* =================================================================
+   RESPONSIVE — bigger layout on tablets / laptops
+   ================================================================= */
+@media (min-width: 720px) {
+  .track { height: 80px; }
+  .car { font-size: 2.6rem; }
+  .question-text { font-size: 4rem; }
+  .answer-btn { font-size: 2rem; padding: 26px; }
+  .lane { padding: 18px 40px 10px; }
+  .question-panel { max-width: 100%; }
+}

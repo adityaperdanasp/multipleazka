@@ -1,0 +1,134 @@
+<!--
+  Multipleazka — 2-Player Multiplication Race Game
+  index.html — STRUCTURE ONLY (all styling in style.css, all logic in script.js)
+
+  Screens are all present in the DOM; script.js shows/hides them by toggling
+  the ".active" class. Firebase is loaded via CDN <script> tags at the bottom.
+-->
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#1266d8" />
+<title>Multipleazka 🏎️ — Multiplication Race</title>
+<link rel="stylesheet" href="style.css" />
+
+<div id="app">
+
+  <!-- ============================================================= -->
+  <!-- SCREEN 1: ROLE SELECTION                                       -->
+  <!-- ============================================================= -->
+  <section id="screen-role" class="screen active">
+    <div class="card">
+      <h1 class="logo">Multipleazka <span class="logo-emoji">🏎️</span></h1>
+      <p class="subtitle">Pick who's playing, then race!</p>
+
+      <div class="role-buttons">
+        <button class="role-btn" data-role="kids">
+          <span class="role-emoji">🧒</span>
+          <span class="role-title">Kids</span>
+          <span class="role-desc">Numbers 1–10 · 10 to win</span>
+        </button>
+        <button class="role-btn" data-role="parent">
+          <span class="role-emoji">🧑</span>
+          <span class="role-title">Parent</span>
+          <span class="role-desc">Numbers 1–12 · harder track</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- SCREEN 2: PAIRING (create or join a game)                      -->
+  <!-- ============================================================= -->
+  <section id="screen-pair" class="screen">
+    <div class="card">
+      <button class="back-btn" data-back="screen-role">← Back</button>
+      <h2>You are: <span id="pair-role-label" class="brand">—</span></h2>
+
+      <!-- Choose create vs join -->
+      <div id="pair-choose">
+        <p class="subtitle">Start a new race or join your partner.</p>
+        <button id="btn-create" class="primary-btn">Create Game</button>
+        <div class="or">— or —</div>
+        <div class="join-row">
+          <input id="join-code-input" type="text" maxlength="6" placeholder="ENTER CODE"
+                 autocomplete="off" autocapitalize="characters" />
+          <button id="btn-join" class="primary-btn">Join</button>
+        </div>
+        <p id="pair-error" class="error-text"></p>
+      </div>
+
+      <!-- Waiting for the other player -->
+      <div id="pair-waiting" class="hidden">
+        <p class="subtitle">Share this code with the other player:</p>
+        <div id="code-display" class="code-display">------</div>
+        <button id="btn-copy-code" class="ghost-btn">Copy code</button>
+        <p class="waiting-status">
+          <span class="spinner"></span>
+          <span id="waiting-text">Waiting for the other player to join…</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- SCREEN 3: RACE                                                 -->
+  <!-- ============================================================= -->
+  <section id="screen-race" class="screen">
+
+    <!-- Top lane: KIDS -->
+    <div class="lane lane-kids">
+      <div class="lane-header">
+        <span class="lane-name">🧒 Kids</span>
+        <span class="lane-score"><span id="kids-correct">0</span> correct</span>
+      </div>
+      <div class="track">
+        <div class="finish-flag">🏁</div>
+        <div class="car" id="car-kids">🏎️</div>
+      </div>
+    </div>
+
+    <!-- Bottom lane: PARENT -->
+    <div class="lane lane-parent">
+      <div class="lane-header">
+        <span class="lane-name">🧑 Parent</span>
+        <span class="lane-score"><span id="parent-correct">0</span> correct</span>
+      </div>
+      <div class="track">
+        <div class="finish-flag">🏁</div>
+        <div class="car" id="car-parent">🚙</div>
+      </div>
+    </div>
+
+    <!-- Question panel (only for THIS device's player) -->
+    <div class="question-panel">
+      <div id="your-turn-label" class="your-turn">Your question</div>
+      <div id="question-text" class="question-text">3 × 4 = ?</div>
+      <div id="answer-options" class="answer-options"><!-- buttons injected by JS --></div>
+
+      <!-- Feedback popup (cheer text for Kids, neutral for Parent) -->
+      <div id="feedback-popup" class="feedback-popup hidden"></div>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
+  <!-- SCREEN 4: GAME OVER                                            -->
+  <!-- ============================================================= -->
+  <section id="screen-over" class="screen">
+    <div class="card">
+      <div id="over-emoji" class="over-emoji">🏆</div>
+      <h1 id="winner-text">Winner!</h1>
+      <p id="over-sub" class="subtitle"></p>
+      <button id="btn-play-again" class="primary-btn">Play Again</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- ============================================================= -->
+<!-- Firebase (CDN, compat build for simple global usage)          -->
+<!-- ============================================================= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<!-- Game logic -->
+<script src="script.js"></script>
