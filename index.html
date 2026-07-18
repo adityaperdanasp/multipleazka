@@ -60,27 +60,9 @@
       <button class="back-btn" data-back="screen-role">← Back</button>
       <h2>You are: <span id="pair-role-label" class="brand">—</span></h2>
 
-      <!-- Choose create vs join -->
+      <!-- Choose create vs join vs solo -->
       <div id="pair-choose">
-        <p class="subtitle">Start a new race or join your partner.</p>
-
-        <!-- Answer style: multiple choice vs type-in (per player) -->
-        <div class="answer-style">
-          <div class="seg-label">Answer style</div>
-          <div class="seg" id="answer-seg">
-            <button class="seg-btn active" data-mode="choice">🔘 Multiple choice</button>
-            <button class="seg-btn" data-mode="type">⌨️ Type it in</button>
-          </div>
-        </div>
-
-        <!-- Timer: 10s per question, timeout counts as wrong (per player) -->
-        <div class="answer-style">
-          <div class="seg-label">Timer</div>
-          <div class="seg" id="timer-seg">
-            <button class="seg-btn active" data-timer="on">⏱ On · 10s</button>
-            <button class="seg-btn" data-timer="off">🚫 Off</button>
-          </div>
-        </div>
+        <p class="subtitle">Start a new race, join your partner, or play solo.</p>
 
         <button id="btn-create" class="primary-btn">Create Game</button>
         <div class="or">— or —</div>
@@ -90,6 +72,26 @@
           <button id="btn-join" class="primary-btn">Join</button>
         </div>
         <p id="pair-error" class="error-text"></p>
+        <div class="or">— or —</div>
+        <button id="btn-solo" class="solo-btn">🙋 Play Solo</button>
+
+        <!-- Answer style: multiple choice vs type-in (per player) -->
+        <div class="setting-row">
+          <span class="setting-label">🔘 Answer style</span>
+          <div class="seg seg-compact" id="answer-seg">
+            <button class="seg-btn active" data-mode="choice">Choice</button>
+            <button class="seg-btn" data-mode="type">Type in</button>
+          </div>
+        </div>
+
+        <!-- Timer: 10s per question, timeout counts as wrong (per player) -->
+        <div class="setting-row">
+          <span class="setting-label">⏱ Timer</span>
+          <div class="seg seg-compact" id="timer-seg">
+            <button class="seg-btn active" data-timer="on">10s</button>
+            <button class="seg-btn" data-timer="off">Off</button>
+          </div>
+        </div>
       </div>
 
       <!-- Waiting for the other player -->

@@ -102,6 +102,8 @@ const state = {
   answerMode: "choice", // 'choice' (multiple choice) | 'type' (keypad)
   answerLocked: false,  // guards against double-submits between questions
   timerOn: true,        // per-question 10s countdown on/off
+  solo: false,          // true when playing without a paired opponent
+  wrongAttempts: 0,     // wrong tries on the CURRENT question (type-in gets 2 before reveal)
   gameOver: false,
   listening: false    // whether a Firebase listener is attached
 };
@@ -190,6 +192,8 @@ function resetPairUI() {
   $("pair-waiting").classList.add("hidden");
   $("pair-error").textContent = "";
   $("join-code-input").value = "";
+  state.solo = false;
+  state.code = null;
 }
 
 // --- CREATE a game ---
@@ -260,6 +264,15 @@ $("btn-join").addEventListener("click", async () => {
   state.code = code;
   await db.ref(`games/${code}/players/${state.role}`).set(playerSeed());
   attachGameListener(code);
+});
+
+// --- PLAY SOLO — no pairing, no Firebase game. The opponent lane stays
+// visible on screen but parked at the start line the whole race. ---
+$("btn-solo").addEventListener("click", () => {
+  state.solo = true;
+  state.code = null;
+  resetCarsToStart();
+  startRace();
 });
 
 // Copy-code button
@@ -348,6 +361,15 @@ function spawnSmoke(track, leftPx) {
   setTimeout(() => puff.remove(), 900);
 }
 
+// Park both cars back at the start line. Used for Solo mode, which has no
+// Firebase echo to reset them visually.
+function resetCarsToStart() {
+  ["kids", "parent"].forEach(role => {
+    lastProgress[role] = 0;
+    updateCar(role, { progress: 0, correct: 0 });
+  });
+}
+
 
 /* =================================================================
    7. RACE — START, QUESTIONS, ANSWERS
@@ -368,6 +390,7 @@ function startRace() {
 function nextQuestion() {
   if (state.gameOver) return;
   state.answerLocked = false;
+  state.wrongAttempts = 0;   // fresh question = fresh retry budget
 
   const max = RANGE[state.role];
   const a = rand(1, max);
@@ -502,26 +525,57 @@ function handleAnswer(value) {
   if (isCorrect) {
     state.correct += 1;
     state.progress = Math.min(state.progress + STEP[state.role], 1);
-    pushProgress();
+
+    // Solo has no Firebase echo to move the car — update it directly.
+    if (state.solo) updateCar(state.role, { progress: state.progress, correct: state.correct });
+    else pushProgress();
+
     giveFeedback(true);
 
-    if (state.progress >= 1) { claimWin(); return; }
-    setTimeout(nextQuestion, 850);   // answerLocked is reset inside nextQuestion
-  } else {
-    giveFeedback(false);
-    if (state.answerMode === "type") {
-      // Type-in: keep the SAME question so the player can try again.
-      setTimeout(() => {
-        state.answerLocked = false;
-        typedValue = "";
-        document.querySelectorAll(".key").forEach(b => (b.disabled = false));
-        updateKeypadDisplay();
-        startQuestionTimer();   // fresh 10s for the retry
-      }, 1000);
-    } else {
-      setTimeout(nextQuestion, 1000); // multiple choice: fresh question
+    if (state.progress >= 1) {
+      if (state.solo) endSoloRace(); else claimWin();
+      return;
     }
+    setTimeout(nextQuestion, 850);   // answerLocked is reset inside nextQuestion
+    return;
   }
+
+  // --- Wrong (or timed out) ---------------------------------------------
+  state.wrongAttempts += 1;
+  giveFeedback(false);
+
+  // Type-in gets a second try on the SAME question before the answer is
+  // revealed; multiple choice only ever gets one shot.
+  const allowRetry = state.answerMode === "type" && state.wrongAttempts < 2;
+
+  if (allowRetry) {
+    setTimeout(() => {
+      state.answerLocked = false;
+      typedValue = "";
+      document.querySelectorAll(".key").forEach(b => (b.disabled = false));
+      updateKeypadDisplay();
+      startQuestionTimer();   // fresh 10s for the retry
+    }, 1000);
+  } else {
+    revealCorrectAnswer();
+  }
+}
+
+// Show the correct answer for 3s (highlighted button, or in the keypad
+// display), then move on to a fresh question.
+function revealCorrectAnswer() {
+  if (state.answerMode === "type") {
+    const d = $("keypad-display");
+    if (d) {
+      d.innerHTML = '<span class="kd-reveal-label">Answer:</span>' +
+        `<span class="kd-reveal">${state.currentAnswer}</span>`;
+    }
+  } else {
+    document.querySelectorAll(".answer-btn").forEach(b => {
+      if (Number(b.textContent) === state.currentAnswer) b.classList.add("reveal-correct");
+    });
+  }
+  setTimeout(nextQuestion, 3000);
 }
 
 // Random int in [min, max].
@@ -667,6 +721,28 @@ function endGame(winnerRole) {
   updateScoreboardUI(winnerRole);   // record + render the family scoreboard
 }
 
+// Solo finish — same celebration, but skips the head-to-head scoreboard
+// entirely since there's no real opponent to have beaten.
+function endSoloRace() {
+  state.gameOver = true;
+  clearQuestionTimer();
+
+  $("over-emoji").textContent = "🏁";
+  $("winner-text").textContent = "You finished!";
+
+  if (state.role === "kids") {
+    const msg = `You did it, ${CHILD_NAME}! You finished the race! Amazing!`;
+    $("over-sub").textContent = msg;
+    speak(msg);
+  } else {
+    $("over-sub").textContent = "Race complete! Nice work.";
+  }
+
+  showScreen("screen-over");
+  $("scoreboard").innerHTML = '<div class="sb-title">🏆 Scoreboard</div>' +
+    '<div class="sb-empty">Play a 2-player race to add to the family scoreboard.</div>';
+}
+
 /* =================================================================
    10b. FAMILY SCOREBOARD — persisted at Firebase /scoreboard
    ================================================================= */
@@ -779,6 +855,9 @@ $("btn-play-again").addEventListener("click", async () => {
       "players/parent/progress": 0,
       "players/parent/finished": false
     });
+  } else if (state.solo) {
+    // No Firebase echo in solo mode — reset both cars on screen directly.
+    resetCarsToStart();
   }
   state.correct = 0;
   state.progress = 0;

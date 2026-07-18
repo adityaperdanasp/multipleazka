@@ -395,6 +395,23 @@ h1, h2 { margin: 0 0 8px; }
 .answer-btn:active { transform: scale(.96); }
 .answer-btn:disabled { opacity: .6; cursor: default; }
 
+/* Highlights the correct answer for 3s after a wrong/timed-out attempt */
+.answer-btn.reveal-correct {
+  background: #eafaf2;
+  border-color: #22a06b;
+  color: #0f6e56;
+  opacity: 1;
+  position: relative;
+}
+.answer-btn.reveal-correct::after {
+  content: "✓";
+  position: absolute;
+  top: 6px; right: 10px;
+  font-size: .9rem;
+  font-weight: 800;
+  color: #22a06b;
+}
+
 /* --- Type-it-in: calculator display + keypad --- */
 .keypad-display {
   background: #f4f7fb;
@@ -420,6 +437,15 @@ h1, h2 { margin: 0 0 8px; }
   animation: blink 1s step-end infinite;
 }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* Shown in the display for 3s when the answer is revealed after a miss */
+.kd-reveal-label {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #6b7a90;
+  margin-right: 6px;
+}
+.kd-reveal { color: #22a06b; }
 .keypad {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -444,16 +470,7 @@ h1, h2 { margin: 0 0 8px; }
 .key.ent  { background: var(--good); border-color: var(--good); color: #fff; }
 .key.ent:hover { background: #1c8b5c; }
 
-/* --- Answer-style segmented control (setup screen) --- */
-.answer-style { margin-bottom: 18px; }
-.seg-label {
-  font-size: .7rem;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 700;
-  margin-bottom: 6px;
-}
+/* --- Answer-style / Timer segmented control --- */
 .seg {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -474,6 +491,55 @@ h1, h2 { margin: 0 0 8px; }
   transition: background .12s ease, color .12s ease;
 }
 .seg-btn.active { background: var(--brand); color: #fff; }
+
+/* --- Compact settings row (Answer style / Timer) on the setup screen ---
+   A label on the left, a small pill toggle on the right — keeps these
+   secondary preferences out of the way of the primary Create/Join/Solo
+   actions above them. --- */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px solid #eef2f8;
+}
+.setting-row:last-of-type { border-bottom: none; }
+.setting-label {
+  font-size: .82rem;
+  font-weight: 700;
+  color: #3a4658;
+  white-space: nowrap;
+}
+.seg-compact {
+  grid-template-columns: none;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+}
+.seg-compact .seg-btn {
+  padding: 6px 12px;
+  font-size: .72rem;
+  border-radius: 999px;
+}
+
+/* --- Play Solo button --- */
+.solo-btn {
+  width: 100%;
+  padding: 13px 16px;
+  font-size: .95rem;
+  font-weight: 700;
+  color: #0f6e56;
+  background: #eafaf2;
+  border: 1.5px solid #9fe1cb;
+  border-radius: 14px;
+  cursor: pointer;
+  margin-bottom: 18px;
+  transition: background .12s ease, transform .1s ease;
+}
+.solo-btn:hover { background: #d9f4e8; }
+.solo-btn:active { transform: scale(.98); }
 
 /* --- Per-question countdown timer --- */
 .timer-wrap {
