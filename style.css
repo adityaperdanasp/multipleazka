@@ -221,6 +221,7 @@ h1, h2 { margin: 0 0 8px; }
 .join-row .primary-btn { width: auto; padding: 14px 22px; }
 
 .error-text { color: #c0392b; font-size: .9rem; min-height: 1.1em; margin: 10px 0 0; }
+.error-text:empty { min-height: 0; margin: 0; }
 
 .code-display {
   font-size: 2.6rem;
