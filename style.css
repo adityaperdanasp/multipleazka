@@ -391,6 +391,30 @@ h1, h2 { margin: 0 0 8px; }
   font-weight: 800;
   margin-bottom: 22px;
 }
+
+/* --- 3-2-1-GO race-start countdown overlay --- */
+.race-countdown {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--qpanel-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.race-countdown.hidden { display: none; }
+.race-countdown span {
+  font-size: 5rem;
+  font-weight: 800;
+  color: var(--brand);
+  animation: countPop .5s cubic-bezier(.34,1.6,.64,1);
+}
+.race-countdown span.go { color: var(--good); font-size: 4rem; }
+@keyframes countPop {
+  0%   { transform: scale(.3); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
 .answer-options {
   width: 100%;
   max-width: 420px;

@@ -133,6 +133,10 @@ let raceStartTime = 0;
 let vehicleTimerId = null;
 let vehicleTimeLeft = 0;
 
+// Race-start (3-2-1-GO) countdown.
+let countdownTimeoutId = null;
+let countdownToken = 0;
+
 // The Firebase game code we currently have a listener attached to (or null).
 // Tracked explicitly so Home / a new Create-or-Join can cleanly detach the
 // old listener instead of leaking it.
@@ -188,6 +192,7 @@ function goHome() {
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   clearQuestionTimer();
   clearVehicleTimer();
+  cancelRaceCountdown();
   detachGameListener();
 
   state.code = null;
@@ -491,13 +496,82 @@ function resetCarsToStart() {
 function startRace() {
   showScreen("screen-race");
   state.answerLocked = false;
-  raceStartTime = Date.now();   // for the scoreboard "best time"
 
   // Parent role gets neutral feedback; Kids get cheering. Hide/adjust label.
   $("your-turn-label").textContent =
     state.role === "kids" ? "Your question, Azka!" : "Your question";
 
-  nextQuestion();
+  playRaceCountdown(() => {
+    raceStartTime = Date.now();   // "best time" starts once racing actually begins
+    nextQuestion();
+  });
+}
+
+// 3-2-1-GO overlay shown at the start of every race (including Play Again).
+// Guarded by a token so a Home-button cancel mid-countdown can't leak a
+// stale timeout into whatever screen comes next.
+function playRaceCountdown(onDone) {
+  const overlay = $("race-countdown");
+  const numEl = $("race-countdown-number");
+  overlay.classList.remove("hidden");
+
+  const myToken = ++countdownToken;
+  const steps = ["3", "2", "1", "GO!"];
+  let i = 0;
+
+  function showStep() {
+    if (myToken !== countdownToken) return;   // cancelled
+
+    const val = steps[i];
+    numEl.textContent = val;
+    numEl.className = val === "GO!" ? "go" : "";
+    // Re-trigger the pop animation for each step.
+    numEl.style.animation = "none";
+    void numEl.offsetWidth;
+    numEl.style.animation = "";
+    playCountdownBeep(val === "GO!");
+
+    i++;
+    if (i < steps.length) {
+      countdownTimeoutId = setTimeout(showStep, 700);
+    } else {
+      countdownTimeoutId = setTimeout(() => {
+        if (myToken !== countdownToken) return;   // cancelled
+        overlay.classList.add("hidden");
+        onDone();
+      }, 550);
+    }
+  }
+  showStep();
+}
+
+// Cancels any in-flight 3-2-1-GO countdown (used by the Home button).
+function cancelRaceCountdown() {
+  countdownToken++;
+  if (countdownTimeoutId) { clearTimeout(countdownTimeoutId); countdownTimeoutId = null; }
+  $("race-countdown").classList.add("hidden");
+}
+
+// A short synthesized tick for 3/2/1, and a brighter tone for GO!
+function playCountdownBeep(isGo) {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = isGo ? 880 : 523.25;
+    const start = ctx.currentTime;
+    const dur = isGo ? 0.4 : 0.2;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.22, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + dur - 0.05);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + dur);
+  } catch (e) {
+    // Web Audio unsupported/blocked — the visual countdown still plays.
+  }
 }
 
 // Generate a new question, then render the answer UI for the chosen mode.
