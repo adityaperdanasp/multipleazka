@@ -29,6 +29,10 @@
 <!-- Floating color-theme toggle (Pastel ⇄ Colorful) — visible on all screens -->
 <button id="theme-toggle" class="theme-toggle">🎨 Pastel</button>
 
+<!-- Floating home button — jumps back to Role Select from anywhere. Hidden
+     on the role screen itself (nowhere to "go home" from). -->
+<button id="home-btn" class="home-btn hidden" title="Back to home">🏠</button>
+
 <div id="app">
 
   <!-- ============================================================= -->
@@ -115,6 +119,32 @@
   </section>
 
   <!-- ============================================================= -->
+  <!-- SCREEN 2b: VEHICLE SELECTION                                   -->
+  <!-- Shown right after Create/Join/Solo is tapped, before the game  -->
+  <!-- actually starts. 10s countdown; tapping a ride confirms early. -->
+  <!-- ============================================================= -->
+  <section id="screen-vehicle" class="screen">
+    <div class="card">
+      <h2>Choose your ride!</h2>
+      <p class="subtitle">Tap to pick — auto-picks when time's up</p>
+
+      <div class="timer-wrap">
+        <div class="timer-bar"><div id="vehicle-timer-fill" class="timer-fill"></div></div>
+        <span id="vehicle-timer-text" class="timer-text">10s</span>
+      </div>
+
+      <div class="vehicle-grid" id="vehicle-grid">
+        <button class="vehicle-opt active" data-vehicle="car">🏎️</button>
+        <button class="vehicle-opt" data-vehicle="plane">✈️</button>
+        <button class="vehicle-opt" data-vehicle="ship">🚢</button>
+        <button class="vehicle-opt" data-vehicle="bus">🚌</button>
+        <button class="vehicle-opt" data-vehicle="truck">🚚</button>
+        <button class="vehicle-opt" data-vehicle="train">🚂</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================= -->
   <!-- SCREEN 3: RACE                                                 -->
   <!-- ============================================================= -->
   <section id="screen-race" class="screen">
@@ -139,7 +169,7 @@
       </div>
       <div class="track">
         <div class="finish-flag">🏁</div>
-        <div class="car" id="car-parent">🚙</div>
+        <div class="car" id="car-parent">🏎️</div>
       </div>
     </div>
 
@@ -187,6 +217,9 @@
 
 <!-- QR code generator (renders a scannable join link on the waiting screen) -->
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+<!-- Confetti burst for the win screen -->
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 
 <!-- Game logic -->
 <script src="script.js"></script>

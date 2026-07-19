@@ -70,6 +70,26 @@ body[data-theme="colorful"] {
 }
 .theme-toggle:active { transform: scale(.9); }
 
+/* ---------- Home button — small, icon-only, top-left, all screens except Role ---------- */
+.home-btn {
+  position: fixed;
+  top: 14px; left: 14px;
+  z-index: 50;
+  width: 34px; height: 34px;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid rgba(0, 0, 0, 0.14);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18);
+}
+.home-btn:active { transform: scale(.9); }
+.home-btn.hidden { display: none; }
+
 /* ---------- Base ---------- */
 * { box-sizing: border-box; }
 
@@ -297,6 +317,9 @@ h1, h2 { margin: 0 0 8px; }
   font-weight: 700;
   margin-bottom: 6px;
 }
+/* Clear the fixed home button (top-left) which would otherwise sit on
+   top of the first lane's label. */
+.lane:first-of-type .lane-header { padding-left: 40px; }
 .lane-kids .lane-name   { color: var(--kids-name); }
 .lane-parent .lane-name { color: var(--parent-name); }
 .lane-score { font-size: .9rem; color: var(--muted); }
@@ -541,6 +564,36 @@ h1, h2 { margin: 0 0 8px; }
 }
 .solo-btn:hover { background: #d9f4e8; }
 .solo-btn:active { transform: scale(.98); }
+
+/* --- Vehicle selection screen --- */
+.vehicle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.vehicle-opt {
+  position: relative;
+  border: 2px solid var(--brand-light);
+  background: #fff;
+  border-radius: 16px;
+  padding: 18px 0;
+  font-size: 2.2rem;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease, transform .1s ease;
+}
+.vehicle-opt:active { transform: scale(.94); }
+.vehicle-opt.active {
+  border-color: var(--brand);
+  background: var(--brand-light);
+}
+.vehicle-opt.active::after {
+  content: "✓";
+  position: absolute;
+  top: 6px; right: 9px;
+  font-size: .8rem;
+  font-weight: 800;
+  color: var(--brand);
+}
 
 /* --- Per-question countdown timer --- */
 .timer-wrap {

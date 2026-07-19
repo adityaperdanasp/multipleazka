@@ -65,6 +65,19 @@ const RANGE = {
   parent: 12  // 1..12
 };
 
+// Seconds given to pick a ride before the current selection auto-confirms.
+const VEHICLE_TIME = 10;
+
+// The six rides a player can choose before a race.
+const VEHICLE_EMOJI = {
+  car: "🏎️",
+  plane: "✈️",
+  ship: "🚢",
+  bus: "🚌",
+  truck: "🚚",
+  train: "🚂"
+};
+
 // Kids cheering — spoken aloud + green popup.
 const CHEERS_CORRECT = [
   "Awesome, Azka! You got it!",
@@ -104,8 +117,8 @@ const state = {
   timerOn: true,        // per-question 10s countdown on/off
   solo: false,          // true when playing without a paired opponent
   wrongAttempts: 0,     // wrong tries on the CURRENT question (type-in gets 2 before reveal)
-  gameOver: false,
-  listening: false    // whether a Firebase listener is attached
+  vehicle: "car",        // chosen ride — kept across "Play Again", reset when going Home
+  gameOver: false
 };
 
 // The digits typed so far in "type-it-in" mode.
@@ -115,6 +128,15 @@ let typedValue = "";
 let timerId = null;
 let timerRemaining = 0;
 let raceStartTime = 0;
+
+// Vehicle-pick countdown.
+let vehicleTimerId = null;
+let vehicleTimeLeft = 0;
+
+// The Firebase game code we currently have a listener attached to (or null).
+// Tracked explicitly so Home / a new Create-or-Join can cleanly detach the
+// old listener instead of leaking it.
+let listeningCode = null;
 
 // A pairing code carried in the URL (?join=CODE) from a scanned QR code.
 const pendingJoinCode = new URLSearchParams(location.search).get("join")?.toUpperCase() || null;
@@ -126,6 +148,8 @@ const pendingJoinCode = new URLSearchParams(location.search).get("join")?.toUppe
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   document.getElementById(id).classList.add("active");
+  // The home button makes sense everywhere except the role screen itself.
+  document.getElementById("home-btn").classList.toggle("hidden", id === "screen-role");
 }
 
 // Small helper to grab elements.
@@ -155,6 +179,24 @@ document.querySelectorAll(".role-btn").forEach(btn => {
 document.querySelectorAll(".back-btn").forEach(btn => {
   btn.addEventListener("click", () => showScreen(btn.dataset.back));
 });
+
+// Home button — bails out to Role Select from anywhere, cleaning up
+// whatever was in flight (timers, speech, Firebase listener).
+$("home-btn").addEventListener("click", goHome);
+
+function goHome() {
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  clearQuestionTimer();
+  clearVehicleTimer();
+  detachGameListener();
+
+  state.code = null;
+  state.solo = false;
+  state.role = null;
+  state.gameOver = false;
+
+  showScreen("screen-role");
+}
 
 // Answer-style segmented control (multiple choice vs type-in). Per player.
 document.querySelectorAll("#answer-seg .seg-btn").forEach(btn => {
@@ -194,30 +236,34 @@ function resetPairUI() {
   $("join-code-input").value = "";
   state.solo = false;
   state.code = null;
+  state.vehicle = "car";   // fresh setup = fresh ride pick (kept across Play Again only)
 }
 
-// --- CREATE a game ---
-$("btn-create").addEventListener("click", async () => {
-  const code = makeCode();
-  state.code = code;
+// --- CREATE a game --- (picks a ride first, then writes the game)
+$("btn-create").addEventListener("click", () => {
+  showVehicleSelect(async () => {
+    const code = makeCode();
+    state.code = code;
 
-  // Write the initial game with this player as the creator.
-  await db.ref("games/" + code).set({
-    createdAt: firebase.database.ServerValue.TIMESTAMP,
-    status: "waiting",
-    winner: null,
-    players: {
-      [state.role]: playerSeed()
-    }
+    // Write the initial game with this player as the creator.
+    await db.ref("games/" + code).set({
+      createdAt: firebase.database.ServerValue.TIMESTAMP,
+      status: "waiting",
+      winner: null,
+      players: {
+        [state.role]: playerSeed()
+      }
+    });
+
+    // Show the waiting UI with the code.
+    showScreen("screen-pair");
+    $("code-display").textContent = code;
+    $("pair-choose").classList.add("hidden");
+    $("pair-waiting").classList.remove("hidden");
+    renderJoinQR(code);
+
+    attachGameListener(code);
   });
-
-  // Show the waiting UI with the code.
-  $("code-display").textContent = code;
-  $("pair-choose").classList.add("hidden");
-  $("pair-waiting").classList.remove("hidden");
-  renderJoinQR(code);
-
-  attachGameListener(code);
 });
 
 // Render a scannable QR code that deep-links straight to this game's code.
@@ -236,7 +282,7 @@ function renderJoinQR(code) {
   });
 }
 
-// --- JOIN a game ---
+// --- JOIN a game --- (validate the code first, THEN pick a ride, THEN join)
 $("btn-join").addEventListener("click", async () => {
   const code = $("join-code-input").value.trim().toUpperCase();
   $("pair-error").textContent = "";
@@ -261,18 +307,22 @@ $("btn-join").addEventListener("click", async () => {
     return;
   }
 
-  state.code = code;
-  await db.ref(`games/${code}/players/${state.role}`).set(playerSeed());
-  attachGameListener(code);
+  showVehicleSelect(async () => {
+    state.code = code;
+    await db.ref(`games/${code}/players/${state.role}`).set(playerSeed());
+    attachGameListener(code);
+  });
 });
 
 // --- PLAY SOLO — no pairing, no Firebase game. The opponent lane stays
 // visible on screen but parked at the start line the whole race. ---
 $("btn-solo").addEventListener("click", () => {
-  state.solo = true;
-  state.code = null;
-  resetCarsToStart();
-  startRace();
+  showVehicleSelect(() => {
+    state.solo = true;
+    state.code = null;
+    resetCarsToStart();
+    startRace();
+  });
 });
 
 // Copy-code button
@@ -285,7 +335,54 @@ $("btn-copy-code").addEventListener("click", () => {
 
 // Fresh player node.
 function playerSeed() {
-  return { role: state.role, correct: 0, progress: 0, finished: false };
+  return { role: state.role, correct: 0, progress: 0, finished: false, vehicle: state.vehicle };
+}
+
+
+/* =================================================================
+   5b. VEHICLE SELECTION — 10s countdown before Create/Join/Solo commits
+   ================================================================= */
+
+// Show the ride-picker and run its 10s countdown. `onDone` fires once —
+// either when the player taps a ride, or when time runs out (keeping
+// whatever was selected, defaulting to "car").
+function showVehicleSelect(onDone) {
+  showScreen("screen-vehicle");
+
+  document.querySelectorAll(".vehicle-opt").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.vehicle === state.vehicle);
+    btn.onclick = () => {
+      state.vehicle = btn.dataset.vehicle;
+      clearVehicleTimer();
+      onDone();
+    };
+  });
+
+  clearVehicleTimer();
+  vehicleTimeLeft = VEHICLE_TIME;
+  updateVehicleTimerUI();
+  vehicleTimerId = setInterval(() => {
+    vehicleTimeLeft -= 0.1;
+    if (vehicleTimeLeft <= 0) {
+      clearVehicleTimer();
+      onDone();
+    } else {
+      updateVehicleTimerUI();
+    }
+  }, 100);
+}
+
+function updateVehicleTimerUI() {
+  const pct = Math.max(0, vehicleTimeLeft / VEHICLE_TIME) * 100;
+  const fill = $("vehicle-timer-fill");
+  const txt = $("vehicle-timer-text");
+  const low = vehicleTimeLeft < 4;
+  if (fill) { fill.style.width = pct + "%"; fill.classList.toggle("low", low); }
+  if (txt) { txt.textContent = Math.max(0, Math.ceil(vehicleTimeLeft)) + "s"; txt.classList.toggle("low", low); }
+}
+
+function clearVehicleTimer() {
+  if (vehicleTimerId) { clearInterval(vehicleTimerId); vehicleTimerId = null; }
 }
 
 
@@ -295,8 +392,9 @@ function playerSeed() {
    One listener on the whole game node keeps both cars + status synced.
    ================================================================= */
 function attachGameListener(code) {
-  if (state.listening) return;
-  state.listening = true;
+  if (listeningCode === code) return;    // already listening to this exact game
+  detachGameListener();                  // drop any stale listener from a previous game
+  listeningCode = code;
 
   db.ref("games/" + code).on("value", snap => {
     const game = snap.val();
@@ -327,6 +425,15 @@ function attachGameListener(code) {
   });
 }
 
+// Detach the current Firebase game listener, if any. Called before attaching
+// a new one and when the player heads Home mid-game.
+function detachGameListener() {
+  if (listeningCode) {
+    db.ref("games/" + listeningCode).off();
+    listeningCode = null;
+  }
+}
+
 // Remember each car's last progress so we can detect forward movement (for smoke).
 const lastProgress = { kids: 0, parent: 0 };
 
@@ -336,6 +443,10 @@ function updateCar(role, player) {
   const car = $("car-" + role);
   const track = car.parentElement;
   const p = Math.min(player.progress || 0, 1);
+
+  // Show whichever ride this player picked (defaults to the F1 car).
+  const emoji = VEHICLE_EMOJI[player.vehicle] || VEHICLE_EMOJI.car;
+  if (car.textContent !== emoji) car.textContent = emoji;
 
   // Car travels from just past the START label to just before the finish flag.
   const startX = 28;
@@ -366,7 +477,10 @@ function spawnSmoke(track, leftPx) {
 function resetCarsToStart() {
   ["kids", "parent"].forEach(role => {
     lastProgress[role] = 0;
-    updateCar(role, { progress: 0, correct: 0 });
+    // In solo, show MY chosen ride on my own lane; the untouched opponent
+    // lane just falls back to the default car.
+    const vehicle = (state.solo && role === state.role) ? state.vehicle : undefined;
+    updateCar(role, { progress: 0, correct: 0, vehicle });
   });
 }
 
@@ -527,8 +641,11 @@ function handleAnswer(value) {
     state.progress = Math.min(state.progress + STEP[state.role], 1);
 
     // Solo has no Firebase echo to move the car — update it directly.
-    if (state.solo) updateCar(state.role, { progress: state.progress, correct: state.correct });
-    else pushProgress();
+    if (state.solo) {
+      updateCar(state.role, { progress: state.progress, correct: state.correct, vehicle: state.vehicle });
+    } else {
+      pushProgress();
+    }
 
     giveFeedback(true);
 
@@ -719,6 +836,7 @@ function endGame(winnerRole) {
 
   showScreen("screen-over");
   updateScoreboardUI(winnerRole);   // record + render the family scoreboard
+  if (iWon) celebrateWin();         // confetti + cheer — winner's device only
 }
 
 // Solo finish — same celebration, but skips the head-to-head scoreboard
@@ -741,6 +859,57 @@ function endSoloRace() {
   showScreen("screen-over");
   $("scoreboard").innerHTML = '<div class="sb-title">🏆 Scoreboard</div>' +
     '<div class="sb-empty">Play a 2-player race to add to the family scoreboard.</div>';
+  celebrateWin();   // solo always "finishes" — celebrate every time
+}
+
+/* =================================================================
+   10a. WIN CELEBRATION — confetti burst + synthesized cheer, ~3s
+   ================================================================= */
+function celebrateWin() {
+  burstConfetti();
+  playCheerSound();
+}
+
+// Fires repeated confetti bursts from both sides for 3 seconds, plus one
+// big burst from the center right away. Uses the canvas-confetti CDN
+// library; silently does nothing if it failed to load.
+function burstConfetti() {
+  if (typeof confetti !== "function") return;
+
+  confetti({ particleCount: 90, spread: 100, origin: { y: 0.4 } });
+
+  const duration = 3000;
+  const end = Date.now() + duration;
+  (function frame() {
+    confetti({ particleCount: 4, angle: 60, spread: 60, origin: { x: 0 } });
+    confetti({ particleCount: 4, angle: 120, spread: 60, origin: { x: 1 } });
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+
+// A short triumphant "ta-da!" fanfare synthesized with the Web Audio API —
+// no external audio file needed.
+function playCheerSound() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 E5 G5 C6 — bright rising arpeggio
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const start = ctx.currentTime + i * 0.11;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.25, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + 0.55);
+    });
+  } catch (e) {
+    // Web Audio unsupported/blocked — confetti still plays, just silently.
+  }
 }
 
 /* =================================================================
