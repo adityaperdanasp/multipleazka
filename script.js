@@ -744,12 +744,29 @@ function giveFeedback(isCorrect) {
   if (state.role === "kids") {
     const list = isCorrect ? CHEERS_CORRECT : CHEERS_WRONG;
     const msg = list[Math.floor(Math.random() * list.length)];
-    speak(msg);
+    playCheerAudio(isCorrect ? "praise" : "encourage", msg);
     showPopup(popup, msg, isCorrect ? "good" : "neutral");
   } else {
     // Parent — neutral, silent.
     showPopup(popup, isCorrect ? "Correct" : "Try again", isCorrect ? "good" : "neutral");
   }
+}
+
+// --- Kids per-answer voice: pre-recorded AzkaSocial cheer clips ------------
+// 20 praise + 20 encourage MP3s, played locally (no API calls). Falls back
+// to browser TTS if a file fails to load/play (e.g. offline, blocked audio).
+const CHEER_AUDIO_COUNT = 20;
+let currentCheerAudio = null;
+
+function playCheerAudio(kind, fallbackText) {
+  if (currentCheerAudio) { currentCheerAudio.pause(); currentCheerAudio.currentTime = 0; }
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel(); // stop any queued fallback speech
+
+  const n = String(rand(1, CHEER_AUDIO_COUNT)).padStart(2, "0");
+  const audio = new Audio(`audio/${kind}/${kind}-${n}.mp3`);
+  currentCheerAudio = audio;
+  audio.addEventListener("error", () => speak(fallbackText));
+  audio.play().catch(() => speak(fallbackText));
 }
 
 function showPopup(popup, text, type) {
