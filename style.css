@@ -54,7 +54,7 @@ body[data-theme="colorful"] {
 /* ---------- Theme toggle — small, icon-only, bottom-right ---------- */
 .theme-toggle {
   position: fixed;
-  bottom: 14px; right: 14px;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px)); right: 14px;
   z-index: 50;
   width: 34px; height: 34px;
   padding: 0;
@@ -70,10 +70,11 @@ body[data-theme="colorful"] {
 }
 .theme-toggle:active { transform: scale(.9); }
 
-/* ---------- Home button — small, icon-only, top-left, all screens except Role ---------- */
+/* ---------- Home button — small, icon-only, bottom-left (mirrors the
+   theme toggle), all screens except Role ---------- */
 .home-btn {
   position: fixed;
-  top: 14px; left: 14px;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px)); left: 14px;
   z-index: 50;
   width: 34px; height: 34px;
   padding: 0;
@@ -317,9 +318,6 @@ h1, h2 { margin: 0 0 8px; }
   font-weight: 700;
   margin-bottom: 6px;
 }
-/* Clear the fixed home button (top-left) which would otherwise sit on
-   top of the first lane's label. */
-.lane:first-of-type .lane-header { padding-left: 40px; }
 .lane-kids .lane-name   { color: var(--kids-name); }
 .lane-parent .lane-name { color: var(--parent-name); }
 .lane-score { font-size: .9rem; color: var(--muted); }

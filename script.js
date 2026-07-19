@@ -71,7 +71,7 @@ const VEHICLE_TIME = 10;
 // The six rides a player can choose before a race.
 const VEHICLE_EMOJI = {
   car: "🏎️",
-  plane: "✈️",
+  plane: "🛩️",
   ship: "🚢",
   bus: "🚌",
   truck: "🚚",
