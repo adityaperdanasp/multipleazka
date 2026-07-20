@@ -459,6 +459,11 @@ function detachGameListener() {
 // Remember each car's last progress so we can detect forward movement (for smoke).
 const lastProgress = { kids: 0, parent: 0 };
 
+// Remember the last nitro-boost timestamp seen per car, so the flame burst
+// fires exactly once per boost instead of re-triggering on every later
+// Firebase echo that still carries the same nitroAt value.
+const lastNitroAt = { kids: 0, parent: 0 };
+
 // Move a car on its track based on that player's progress (0..1).
 function updateCar(role, player) {
   if (!player) return;
@@ -477,6 +482,12 @@ function updateCar(role, player) {
   car.style.left = leftPx + "px";
   $(role + "-correct").textContent = player.correct || 0;
 
+  // Nitro boost — visible on BOTH devices' view of this lane, fires once.
+  if (player.nitroAt && player.nitroAt > lastNitroAt[role]) {
+    lastNitroAt[role] = player.nitroAt;
+    triggerNitroEffect(role, car, track, leftPx);
+  }
+
   // Smoke puff for the KIDS car whenever it moves forward. 💨
   if (role === "kids" && p > lastProgress.kids) {
     spawnSmoke(track, leftPx);
@@ -494,11 +505,69 @@ function spawnSmoke(track, leftPx) {
   setTimeout(() => puff.remove(), 900);
 }
 
+// Car glow-pulse + flame burst for a nitro boost. The announcement text and
+// whoosh sound only play on the device that actually earned this boost, so
+// watching your opponent's car light up doesn't talk over your own screen.
+function triggerNitroEffect(role, car, track, leftPx) {
+  car.classList.remove("nitro-boost");
+  void car.offsetWidth;
+  car.classList.add("nitro-boost");
+  setTimeout(() => car.classList.remove("nitro-boost"), 650);
+
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      const flame = document.createElement("div");
+      flame.className = "smoke";
+      flame.textContent = "🔥";
+      flame.style.left = Math.max(0, leftPx - 10 - i * 8) + "px";
+      track.appendChild(flame);
+      setTimeout(() => flame.remove(), 900);
+    }, i * 90);
+  }
+
+  if (role === state.role) {
+    flashNitroText();
+    playNitroSound();
+  }
+}
+
+function flashNitroText() {
+  const el = $("nitro-flash");
+  el.classList.remove("hidden");
+  el.style.animation = "none";
+  void el.offsetWidth;
+  el.style.animation = "";
+  setTimeout(() => el.classList.add("hidden"), 1000);
+}
+
+// A quick rising "whoosh" synthesized with the Web Audio API.
+function playNitroSound() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    const start = ctx.currentTime;
+    osc.frequency.setValueAtTime(220, start);
+    osc.frequency.exponentialRampToValueAtTime(880, start + 0.35);
+    gain.gain.setValueAtTime(0.001, start);
+    gain.gain.linearRampToValueAtTime(0.18, start + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(start);
+    osc.stop(start + 0.45);
+  } catch (e) {
+    // Web Audio unsupported/blocked — the visual boost still plays.
+  }
+}
+
 // Park both cars back at the start line. Used for Solo mode, which has no
 // Firebase echo to reset them visually.
 function resetCarsToStart() {
   ["kids", "parent"].forEach(role => {
     lastProgress[role] = 0;
+    lastNitroAt[role] = 0;
     // In solo, show MY chosen ride on my own lane; the untouched opponent
     // lane just falls back to the default car.
     const vehicle = (state.solo && role === state.role) ? state.vehicle : undefined;
@@ -729,17 +798,28 @@ function handleAnswer(value) {
 
   if (isCorrect) {
     state.correct += 1;
-    state.progress = Math.min(state.progress + STEP[state.role], 1);
-    const raceWon = state.progress >= 1;
-
     state.streak += 1;
     updateStreakBadge();
 
+    // Every 3rd answer in a row gives a 50% bigger jump plus a nitro effect.
+    const isNitro = state.streak > 0 && state.streak % 3 === 0;
+    let stepAmount = STEP[state.role];
+    if (isNitro) stepAmount *= 1.5;
+    state.progress = Math.min(state.progress + stepAmount, 1);
+    const raceWon = state.progress >= 1;
+
+    // Suppress the nitro flare (not the progress bonus) on the winning
+    // answer — the win celebration's own sound takes priority there.
+    const showNitroEffect = isNitro && !raceWon;
+
     // Solo has no Firebase echo to move the car — update it directly.
     if (state.solo) {
-      updateCar(state.role, { progress: state.progress, correct: state.correct, vehicle: state.vehicle });
+      updateCar(state.role, {
+        progress: state.progress, correct: state.correct, vehicle: state.vehicle,
+        nitroAt: showNitroEffect ? Date.now() : undefined
+      });
     } else {
-      pushProgress();
+      pushProgress(showNitroEffect);
     }
 
     // On the race-winning answer, skip the per-answer praise VOICE so it
@@ -813,13 +893,15 @@ function shuffle(arr) {
    ================================================================= */
 
 // Push this player's progress to Firebase (syncs the other device).
-function pushProgress() {
+function pushProgress(isNitro) {
   if (!state.code) return;
-  db.ref(`games/${state.code}/players/${state.role}`).update({
+  const update = {
     correct: state.correct,
     progress: state.progress,
     finished: state.progress >= 1
-  });
+  };
+  if (isNitro) update.nitroAt = Date.now();
+  db.ref(`games/${state.code}/players/${state.role}`).update(update);
 }
 
 // Claim the win using a transaction so only the FIRST finisher wins.

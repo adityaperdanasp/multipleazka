@@ -364,6 +364,14 @@ h1, h2 { margin: 0 0 8px; }
   100% { opacity: 0;   transform: translateY(-90%) translateX(-26px) scale(1.5); }
 }
 
+/* Nitro boost — brief glow + scale pulse on the car (every 3rd streak) */
+.car.nitro-boost { animation: nitroCarPulse .65s ease; }
+@keyframes nitroCarPulse {
+  0%   { filter: drop-shadow(0 0 0 transparent); transform: translateY(-50%) scaleX(-1) scale(1); }
+  40%  { filter: drop-shadow(0 0 14px #ff6f5e); transform: translateY(-50%) scaleX(-1) scale(1.35); }
+  100% { filter: drop-shadow(0 0 0 transparent); transform: translateY(-50%) scaleX(-1) scale(1); }
+}
+
 /* Question panel — ALWAYS clean white (unchanged by the theme).
    Extra bottom padding keeps the bottom-right toggle off the answer buttons. */
 .question-panel {
@@ -748,6 +756,30 @@ h1, h2 { margin: 0 0 8px; }
 @keyframes floatIn {
   from { transform: translateX(-50%) translateY(20px); opacity: 0; }
   to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Nitro boost text flash — big, brief, center of the question panel */
+.nitro-flash {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(90deg, #ff6f5e, #ffb03a);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.3rem;
+  padding: 14px 26px;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(255, 111, 94, .45);
+  z-index: 15;
+  pointer-events: none;
+  animation: nitroFlash 1s ease forwards;
+}
+.nitro-flash.hidden { display: none; }
+@keyframes nitroFlash {
+  0%   { transform: translate(-50%, -50%) scale(.5); opacity: 0; }
+  25%  { transform: translate(-50%, -50%) scale(1.15); opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
 }
 
 /* ---------- Game over ---------- */
