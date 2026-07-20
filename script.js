@@ -713,6 +713,7 @@ function handleAnswer(value) {
   if (isCorrect) {
     state.correct += 1;
     state.progress = Math.min(state.progress + STEP[state.role], 1);
+    const raceWon = state.progress >= 1;
 
     // Solo has no Firebase echo to move the car — update it directly.
     if (state.solo) {
@@ -721,9 +722,12 @@ function handleAnswer(value) {
       pushProgress();
     }
 
-    giveFeedback(true);
+    // On the race-winning answer, skip the per-answer praise VOICE so it
+    // doesn't collide with the "you won the race" announcement that's
+    // about to speak — the popup text still shows for a visual reward.
+    giveFeedback(true, raceWon);
 
-    if (state.progress >= 1) {
+    if (raceWon) {
       if (state.solo) endSoloRace(); else claimWin();
       return;
     }
@@ -812,13 +816,13 @@ function claimWin() {
    Kids: random spoken cheer + colored popup (green / blue-neutral).
    Parent: plain "Correct" / "Try again", NO speech, NO cheering.
    ================================================================= */
-function giveFeedback(isCorrect) {
+function giveFeedback(isCorrect, skipVoice) {
   const popup = $("feedback-popup");
 
   if (state.role === "kids") {
     const list = isCorrect ? CHEERS_CORRECT : CHEERS_WRONG;
     const msg = list[Math.floor(Math.random() * list.length)];
-    playCheerAudio(isCorrect ? "praise" : "encourage", msg);
+    if (!skipVoice) playCheerAudio(isCorrect ? "praise" : "encourage", msg);
     showPopup(popup, msg, isCorrect ? "good" : "neutral");
   } else {
     // Parent — neutral, silent.
