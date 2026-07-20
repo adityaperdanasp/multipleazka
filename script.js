@@ -464,6 +464,13 @@ const lastProgress = { kids: 0, parent: 0 };
 // Firebase echo that still carries the same nitroAt value.
 const lastNitroAt = { kids: 0, parent: 0 };
 
+// Fill each track's scrolling background once at load — sparse clouds with
+// wide gaps, wide enough to never run out on any screen size.
+["kids", "parent"].forEach(role => {
+  const el = $("scenery-" + role);
+  if (el) el.textContent = "☁️" + "                    ☁️".repeat(45);
+});
+
 // Move a car on its track based on that player's progress (0..1).
 function updateCar(role, player) {
   if (!player) return;
@@ -481,6 +488,11 @@ function updateCar(role, player) {
   const leftPx = startX + (endX - startX) * p;
   car.style.left = leftPx + "px";
   $(role + "-correct").textContent = player.correct || 0;
+
+  // Background scenery scrolls opposite the car, at 60% of its travel
+  // distance — a subtle parallax depth cue, only moving as progress does.
+  const scenery = track.querySelector(".scenery");
+  if (scenery) scenery.style.transform = `translateX(-${(endX - startX) * p * 0.6}px)`;
 
   // Nitro boost — visible on BOTH devices' view of this lane, fires once.
   if (player.nitroAt && player.nitroAt > lastNitroAt[role]) {

@@ -331,6 +331,23 @@ h1, h2 { margin: 0 0 8px; }
   border: 2px dashed var(--track-border);
   overflow: hidden;
 }
+/* Scrolling background scenery (clouds) — a faint parallax layer behind
+   the car, only moves as progress advances (driven from updateCar). Kept
+   small, sparse, and low-opacity so it stays ambient, not distracting. */
+.scenery {
+  position: absolute;
+  top: 4px; left: 0;
+  height: 14px;
+  overflow: hidden;
+  white-space: pre;
+  font-size: .6rem;
+  line-height: 1;
+  opacity: .16;
+  pointer-events: none;
+  z-index: 0;
+  transition: transform 0.5s cubic-bezier(.34,1.2,.64,1);
+}
+
 .finish-flag {
   position: absolute;
   right: 6px; top: 50%;
