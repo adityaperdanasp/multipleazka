@@ -1137,9 +1137,19 @@ function playFinishCheer() {
   playYeahShout();
 }
 
-// A short burst of synthesized clapping (filtered noise impulses, irregular
-// timing so it reads as a small crowd rather than a robotic beat).
+// Real crowd cheering/applause (trimmed to ~6.3s — how long the confetti
+// burst stays visible: 3s of emitting + ~3.3s for the last particles to
+// fade). Falls back to a synthesized clap burst if the file won't play.
 function playApplause() {
+  const audio = new Audio("audio/finish/clap.mp3");
+  audio.volume = 1;
+  audio.addEventListener("error", playSynthesizedApplause);
+  audio.play().catch(playSynthesizedApplause);
+}
+
+// Fallback: a short burst of synthesized clapping (filtered noise impulses,
+// irregular timing so it reads as a small crowd rather than a robotic beat).
+function playSynthesizedApplause() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
