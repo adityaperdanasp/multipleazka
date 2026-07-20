@@ -379,6 +379,27 @@ h1, h2 { margin: 0 0 8px; }
   justify-content: center;
   position: relative;
 }
+/* --- Combo streak badge --- */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(90deg, #ff8a3d, #ff6f5e);
+  color: #fff;
+  font-weight: 800;
+  font-size: .9rem;
+  padding: 7px 16px;
+  border-radius: 999px;
+  margin-bottom: 14px;
+  animation: streakPop .4s cubic-bezier(.34,1.6,.64,1);
+}
+.streak-badge.hidden { display: none; }
+@keyframes streakPop {
+  0%   { transform: scale(.6); opacity: 0; }
+  60%  { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .your-turn {
   text-transform: uppercase;
   letter-spacing: 2px;

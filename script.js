@@ -118,8 +118,22 @@ const state = {
   solo: false,          // true when playing without a paired opponent
   wrongAttempts: 0,     // wrong tries on the CURRENT question (type-in gets 2 before reveal)
   vehicle: "car",        // chosen ride — kept across "Play Again", reset when going Home
+  streak: 0,             // consecutive correct answers THIS race — resets on any wrong answer
   gameOver: false
 };
+
+// Zeroes every per-race counter. Called at the start of every race —
+// Create/Join/Solo (after the ride is picked) and every Play Again — so a
+// fresh race always begins from a clean slate rather than inheriting
+// whatever an earlier, possibly-abandoned race left behind.
+function resetRaceState() {
+  state.correct = 0;
+  state.progress = 0;
+  state.wrongAttempts = 0;
+  state.streak = 0;
+  state.gameOver = false;
+  updateStreakBadge();
+}
 
 // The digits typed so far in "type-it-in" mode.
 let typedValue = "";
@@ -247,6 +261,7 @@ function resetPairUI() {
 // --- CREATE a game --- (picks a ride first, then writes the game)
 $("btn-create").addEventListener("click", () => {
   showVehicleSelect(async () => {
+    resetRaceState();
     const code = makeCode();
     state.code = code;
 
@@ -313,6 +328,7 @@ $("btn-join").addEventListener("click", async () => {
   }
 
   showVehicleSelect(async () => {
+    resetRaceState();
     state.code = code;
     await db.ref(`games/${code}/players/${state.role}`).set(playerSeed());
     attachGameListener(code);
@@ -323,6 +339,7 @@ $("btn-join").addEventListener("click", async () => {
 // visible on screen but parked at the start line the whole race. ---
 $("btn-solo").addEventListener("click", () => {
   showVehicleSelect(() => {
+    resetRaceState();
     state.solo = true;
     state.code = null;
     resetCarsToStart();
@@ -715,6 +732,9 @@ function handleAnswer(value) {
     state.progress = Math.min(state.progress + STEP[state.role], 1);
     const raceWon = state.progress >= 1;
 
+    state.streak += 1;
+    updateStreakBadge();
+
     // Solo has no Firebase echo to move the car — update it directly.
     if (state.solo) {
       updateCar(state.role, { progress: state.progress, correct: state.correct, vehicle: state.vehicle });
@@ -737,6 +757,8 @@ function handleAnswer(value) {
 
   // --- Wrong (or timed out) ---------------------------------------------
   state.wrongAttempts += 1;
+  state.streak = 0;
+  updateStreakBadge();
   giveFeedback(false);
 
   // Type-in gets a second try on the SAME question before the answer is
@@ -856,6 +878,22 @@ function showPopup(popup, text, type) {
   popup.style.animation = "";
   clearTimeout(showPopup._t);
   showPopup._t = setTimeout(() => popup.classList.add("hidden"), 1600);
+}
+
+// Combo streak badge — stays visible (unlike the cheer popup, which fades)
+// for as long as the streak holds, updating its count each correct answer.
+// Hidden once the streak drops back below 2 (i.e. any wrong answer).
+function updateStreakBadge() {
+  const badge = $("streak-badge");
+  if (state.streak >= 2) {
+    $("streak-count").textContent = state.streak;
+    badge.classList.remove("hidden");
+    badge.style.animation = "none";
+    void badge.offsetWidth;
+    badge.style.animation = "";
+  } else {
+    badge.classList.add("hidden");
+  }
 }
 
 // --- Warm, friendly FEMALE voice selection ---------------------------------
@@ -1123,9 +1161,7 @@ $("btn-play-again").addEventListener("click", async () => {
     // No Firebase echo in solo mode — reset both cars on screen directly.
     resetCarsToStart();
   }
-  state.correct = 0;
-  state.progress = 0;
-  state.gameOver = false;
+  resetRaceState();
   clearQuestionTimer();
   startRace();
 });
