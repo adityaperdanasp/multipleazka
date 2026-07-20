@@ -34,11 +34,18 @@ const firebaseConfig = {
   projectId: "multipleazka",
   storageBucket: "multipleazka.firebasestorage.app",
   messagingSenderId: "597375324235",
-  appId: "1:597375324235:web:384f8d3b43e582b281fdce"
+  appId: "1:597375324235:web:384f8d3b43e582b281fdce",
+  measurementId: "G-V4RWKQ1C7E"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
+
+// Google Analytics (via Firebase Analytics). Safe no-op if the analytics
+// SDK script fails to load (e.g. blocked by an ad blocker).
+if (firebase.analytics) {
+  firebase.analytics();
+}
 
 
 /* =================================================================
