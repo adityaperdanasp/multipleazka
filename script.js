@@ -132,6 +132,7 @@ function resetRaceState() {
   state.wrongAttempts = 0;
   state.streak = 0;
   state.gameOver = false;
+  lastQuestionKey = null;
   updateStreakBadge();
 }
 
@@ -672,6 +673,11 @@ function playCountdownBeep(isGo) {
   }
 }
 
+// Remembers the last question shown, so the same "a × b" never appears twice
+// in a row. The range always has 100+ combinations, so a reroll always
+// resolves within a couple of tries.
+let lastQuestionKey = null;
+
 // Generate a new question, then render the answer UI for the chosen mode.
 function nextQuestion() {
   if (state.gameOver) return;
@@ -679,8 +685,13 @@ function nextQuestion() {
   state.wrongAttempts = 0;   // fresh question = fresh retry budget
 
   const max = RANGE[state.role];
-  const a = rand(1, max);
-  const b = rand(1, max);
+  let a, b, key;
+  do {
+    a = rand(1, max);
+    b = rand(1, max);
+    key = a + "x" + b;
+  } while (key === lastQuestionKey);
+  lastQuestionKey = key;
   state.currentAnswer = a * b;
 
   $("question-text").textContent = `${a} × ${b} = ?`;
@@ -932,12 +943,23 @@ function claimWin() {
    Kids: random spoken cheer + colored popup (green / blue-neutral).
    Parent: plain "Correct" / "Try again", NO speech, NO cheering.
    ================================================================= */
+// Remembers the last cheer TEXT shown per outcome, so the same line never
+// pops up twice in a row (separate from which audio clip plays).
+const lastCheerMsgIndex = { good: -1, wrong: -1 };
+
 function giveFeedback(isCorrect, skipVoice) {
   const popup = $("feedback-popup");
 
   if (state.role === "kids") {
     const list = isCorrect ? CHEERS_CORRECT : CHEERS_WRONG;
-    const msg = list[Math.floor(Math.random() * list.length)];
+    const key = isCorrect ? "good" : "wrong";
+    let idx;
+    do {
+      idx = Math.floor(Math.random() * list.length);
+    } while (idx === lastCheerMsgIndex[key] && list.length > 1);
+    lastCheerMsgIndex[key] = idx;
+    const msg = list[idx];
+
     if (!skipVoice) playCheerAudio(isCorrect ? "praise" : "encourage", msg);
     showPopup(popup, msg, isCorrect ? "good" : "neutral");
   } else {
@@ -952,11 +974,21 @@ function giveFeedback(isCorrect, skipVoice) {
 const CHEER_AUDIO_COUNT = 20;
 let currentCheerAudio = null;
 
+// Remembers the last audio clip NUMBER played per kind, so the exact same
+// clip never plays twice in a row.
+const lastCheerAudioNum = { praise: 0, encourage: 0 };
+
 function playCheerAudio(kind, fallbackText) {
   if (currentCheerAudio) { currentCheerAudio.pause(); currentCheerAudio.currentTime = 0; }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel(); // stop any queued fallback speech
 
-  const n = String(rand(1, CHEER_AUDIO_COUNT)).padStart(2, "0");
+  let num;
+  do {
+    num = rand(1, CHEER_AUDIO_COUNT);
+  } while (num === lastCheerAudioNum[kind]);
+  lastCheerAudioNum[kind] = num;
+
+  const n = String(num).padStart(2, "0");
   const audio = new Audio(`audio/${kind}/${kind}-${n}.mp3`);
   currentCheerAudio = audio;
   audio.addEventListener("error", () => speak(fallbackText));
@@ -1048,11 +1080,11 @@ function endGame(winnerRole) {
   const winnerName = winnerRole === "kids" ? "Kids" : "Parent";
   $("winner-text").textContent = `${winnerName} win${winnerRole === "kids" ? "" : "s"}!`;
 
-  // Kids get a personalized spoken celebration if they won.
+  // Winning text still shows, but is no longer spoken — celebrateWin()
+  // plays an applause + "Yeah!" cheer instead (see below).
   if (state.role === "kids" && iWon) {
     const msg = `You did it, ${CHILD_NAME}! You won the race! Amazing!`;
     $("over-sub").textContent = msg;
-    speak(msg);
   } else if (state.role === "kids" && !iWon) {
     const msg = `Great racing, ${CHILD_NAME}! So close — let's play again!`;
     $("over-sub").textContent = msg;
@@ -1078,7 +1110,7 @@ function endSoloRace() {
   if (state.role === "kids") {
     const msg = `You did it, ${CHILD_NAME}! You finished the race! Amazing!`;
     $("over-sub").textContent = msg;
-    speak(msg);
+    // Not spoken anymore — celebrateWin() plays an applause + "Yeah!" cheer.
   } else {
     $("over-sub").textContent = "Race complete! Nice work.";
   }
@@ -1095,6 +1127,72 @@ function endSoloRace() {
 function celebrateWin() {
   burstConfetti();
   playCheerSound();
+  playFinishCheer();   // applause + "Yeah!" — replaces the old spoken win line
+}
+
+// Applause + an excited "Yeah!" shout — as loud as the old voiceover was,
+// fires for whoever just won (Kids or Parent, 2-player or solo).
+function playFinishCheer() {
+  playApplause();
+  playYeahShout();
+}
+
+// A short burst of synthesized clapping (filtered noise impulses, irregular
+// timing so it reads as a small crowd rather than a robotic beat).
+function playApplause() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    const clapCount = 14;
+    for (let i = 0; i < clapCount; i++) {
+      const t = now + i * 0.09 + Math.random() * 0.05;
+      playClap(ctx, t, 0.35 + Math.random() * 0.15);
+    }
+  } catch (e) {
+    // Web Audio unsupported/blocked — the rest of the celebration still plays.
+  }
+}
+
+// A single hand-clap: a short decaying noise burst through a bandpass filter.
+function playClap(ctx, startTime, peakGain) {
+  const duration = 0.15;
+  const bufferSize = Math.floor(ctx.sampleRate * duration);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+  }
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.value = 1800 + Math.random() * 800;
+  filter.Q.value = 0.8;
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(peakGain, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+  source.connect(filter).connect(gain).connect(ctx.destination);
+  source.start(startTime);
+  source.stop(startTime + duration);
+}
+
+// A short, excited "Yeah!" via the same TTS voice used elsewhere, at full
+// volume so it's at least as loud as the sentence it's replacing.
+function playYeahShout() {
+  if (!("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance("Yeah! Woohoo!");
+  u.lang = "en-US";
+  u.rate = 1.15;
+  u.pitch = 1.5;
+  u.volume = 1;
+  if (preferredVoice) u.voice = preferredVoice;
+  window.speechSynthesis.speak(u);
 }
 
 // Fires repeated confetti bursts from both sides for 3 seconds, plus one
